@@ -1,0 +1,31 @@
+version: "3.9"
+
+services:
+  medcore-db:
+    image: postgres:18
+    container_name: medcore-db
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${MEDCORE_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${MEDCORE_POSTGRES_PASSWORD}
+      POSTGRES_DB: ${MEDCORE_POSTGRES_DB}
+    volumes:
+      - medcore_data:/var/lib/postgresql
+    networks:
+      - mynetwork
+    ports:
+      - ${MEDCORE_POSTGRES_PORT}:5432
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U $MEDCORE_POSTGRES_DB" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+
+networks:
+  mynetwork:
+    driver: bridge
+
+volumes:
+  medcore_data:
