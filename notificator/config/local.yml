@@ -1,0 +1,28 @@
+env: "dev"
+http_server:
+  address: "localhost:8081"
+  timeout: 4s
+  idle_timeout: 60s
+
+storage:
+  redis:
+    host: "localhost"
+    port: 6379
+    db: 0
+    password: ""
+    cache_ttl: 10m
+
+rabbit_mq:
+  url: "amqp://guest:guest@localhost:5672/"
+  delay_queue: "delay_queue"
+  ready_queue: "ready_queue"
+  retry_queue: "retry_queue"
+  prefetch_count: 10
+  reconnect_delay: 5s
+
+notifier:
+  retry_initial_delay: 1s
+  max_retries: 5
+  channels:
+    - "email"
+    - "telegram"
