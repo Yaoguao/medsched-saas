@@ -1,0 +1,28 @@
+info:
+  name: 11 Patients - update medical profile
+  type: http
+  seq: 12
+http:
+  method: PATCH
+  url: http://localhost:8081/api/v1/patients/{{patient_id}}/profile
+  headers:
+  - name: Content-Type
+    value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "chronic_conditions": "hypertension; asthma",
+        "risk_factors": "previous no-show; long waiting interval",
+        "notes": "updated from Bruno",
+        "has_hypertension": true,
+        "has_diabetes": false,
+        "has_alcoholism": false,
+        "has_handicap": false
+      }
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

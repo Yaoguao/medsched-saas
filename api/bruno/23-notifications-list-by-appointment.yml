@@ -1,7 +1,7 @@
 info:
-  name: 24 Notifications - list by appointment
+  name: 31 Notifications - list by appointment
   type: http
-  seq: 25
+  seq: 32
 http:
   method: GET
   url: http://localhost:8081/api/v1/appointments/{{appointment_id}}/notifications

@@ -1,0 +1,17 @@
+info:
+  name: 53 Core - ML training dataset
+  type: http
+  seq: 53
+http:
+  method: GET
+  url: http://localhost:8081/api/v1/ml/training/no-show-dataset
+  params:
+  - name: limit
+    value: "5000"
+    enabled: true
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

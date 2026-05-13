@@ -1,0 +1,25 @@
+info:
+  name: 40 Notifier - template upsert
+  type: http
+  seq: 40
+http:
+  method: POST
+  url: http://localhost:8082/templates
+  headers:
+  - name: Content-Type
+    value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "id": "appointment_reminder",
+        "channel": "email",
+        "subject": "Напоминание о приеме",
+        "body": "Здравствуйте, {{patient_name}}. Напоминаем о приеме {{appointment_at}} у врача {{doctor_name}}."
+      }
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

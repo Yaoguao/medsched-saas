@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"base/internal/domain/models"
+	appointmenthandler "base/internal/http-server/handlers/appointments"
 	"base/internal/http-server/handlers/common"
 	"base/internal/service"
 
@@ -25,6 +26,7 @@ func (h *Handler) Register(r gin.IRouter) {
 	r.GET("/patients/:patient_id", h.get)
 	r.PATCH("/patients/:patient_id", h.update)
 	r.GET("/patients/:patient_id/profile", h.getMedicalProfile)
+	r.PATCH("/patients/:patient_id/profile", h.updateMedicalProfile)
 	r.GET("/patients/:patient_id/appointments", h.listAppointments)
 }
 
@@ -122,6 +124,33 @@ func (h *Handler) getMedicalProfile(c *gin.Context) {
 	c.JSON(http.StatusOK, medicalProfileResponseFromModel(&profile))
 }
 
+func (h *Handler) updateMedicalProfile(c *gin.Context) {
+	id, ok := common.PathUUID(c, "patient_id")
+	if !ok {
+		return
+	}
+
+	var req updateMedicalProfileRequest
+	if !common.BindJSON(c, &req) {
+		return
+	}
+
+	profile, err := h.svc.UpdatePatientMedicalProfile(c.Request.Context(), id, service.PatientMedicalProfilePatch{
+		ChronicConditions: req.ChronicConditions,
+		RiskFactors:       req.RiskFactors,
+		Allergies:         req.Allergies,
+		Notes:             req.Notes,
+		HasHypertension:   req.HasHypertension,
+		HasDiabetes:       req.HasDiabetes,
+		HasAlcoholism:     req.HasAlcoholism,
+		HasHandicap:       req.HasHandicap,
+	})
+	if common.HandleError(c, err) {
+		return
+	}
+	c.JSON(http.StatusOK, medicalProfileResponseFromModel(&profile))
+}
+
 func (h *Handler) listAppointments(c *gin.Context) {
 	id, ok := common.PathUUID(c, "patient_id")
 	if !ok {
@@ -132,7 +161,7 @@ func (h *Handler) listAppointments(c *gin.Context) {
 	if common.HandleError(c, err) {
 		return
 	}
-	common.RespondList(c, appointments, page)
+	common.RespondList(c, appointmenthandler.ResponsesFromModels(appointments), page)
 }
 
 type createRequest struct {
@@ -167,4 +196,15 @@ type medicalProfileRequest struct {
 	HasDiabetes       bool   `json:"has_diabetes"`
 	HasAlcoholism     bool   `json:"has_alcoholism"`
 	HasHandicap       bool   `json:"has_handicap"`
+}
+
+type updateMedicalProfileRequest struct {
+	ChronicConditions *string `json:"chronic_conditions"`
+	RiskFactors       *string `json:"risk_factors"`
+	Allergies         *string `json:"allergies"`
+	Notes             *string `json:"notes"`
+	HasHypertension   *bool   `json:"has_hypertension"`
+	HasDiabetes       *bool   `json:"has_diabetes"`
+	HasAlcoholism     *bool   `json:"has_alcoholism"`
+	HasHandicap       *bool   `json:"has_handicap"`
 }

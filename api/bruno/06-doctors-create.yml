@@ -1,7 +1,7 @@
 info:
-  name: 07 Doctors - create
+  name: 14 Doctors - create
   type: http
-  seq: 8
+  seq: 15
 http:
   method: POST
   url: http://localhost:8081/api/v1/doctors

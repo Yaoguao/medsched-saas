@@ -13,6 +13,8 @@ type Config struct {
 	Env           string        `yaml:"env"`
 	HTTPServer    HTTPServer    `yaml:"http_server"`
 	StorageConfig StorageConfig `yaml:"storage"`
+	Auth          Auth          `yaml:"auth"`
+	ML            ML            `yaml:"ml"`
 }
 
 type HTTPServer struct {
@@ -31,6 +33,16 @@ type StorageConfig struct {
 		BaseRetryDelay time.Duration `yaml:"base_retry_delay"`
 		MaxRetryDelay  time.Duration `yaml:"max_retry_delay"`
 	} `yaml:"postgres"`
+}
+
+type Auth struct {
+	TokenSecret string        `yaml:"token_secret" env:"MEDCORE_AUTH_TOKEN_SECRET" env-default:"dev-secret-change-me"`
+	TokenTTL    time.Duration `yaml:"token_ttl" env:"MEDCORE_AUTH_TOKEN_TTL" env-default:"24h"`
+}
+
+type ML struct {
+	BaseURL string        `yaml:"base_url" env:"MEDCORE_ML_BASE_URL" env-default:"http://localhost:8000"`
+	Timeout time.Duration `yaml:"timeout" env:"MEDCORE_ML_TIMEOUT" env-default:"3s"`
 }
 
 func MustLoad() *Config {

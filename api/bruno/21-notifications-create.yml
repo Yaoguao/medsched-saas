@@ -1,7 +1,7 @@
 info:
-  name: 22 Notifications - create
+  name: 29 Notifications - create
   type: http
-  seq: 23
+  seq: 30
 http:
   method: POST
   url: http://localhost:8081/api/v1/notifications/send

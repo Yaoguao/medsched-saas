@@ -1,7 +1,7 @@
 info:
-  name: 04 Patients - update
+  name: '09 Patients - update'
   type: http
-  seq: 5
+  seq: 10
 http:
   method: PATCH
   url: http://localhost:8081/api/v1/patients/{{patient_id}}

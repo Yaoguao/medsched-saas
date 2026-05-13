@@ -48,7 +48,7 @@ func (h *Handler) createSchedule(c *gin.Context) {
 	if common.HandleError(c, err) {
 		return
 	}
-	c.JSON(http.StatusCreated, created)
+	c.JSON(http.StatusCreated, scheduleResponseFromModel(created))
 }
 
 func (h *Handler) listDoctorSchedules(c *gin.Context) {
@@ -61,7 +61,7 @@ func (h *Handler) listDoctorSchedules(c *gin.Context) {
 	if common.HandleError(c, err) {
 		return
 	}
-	common.RespondList(c, schedules, page)
+	common.RespondList(c, scheduleResponsesFromModels(schedules), page)
 }
 
 func (h *Handler) updateSchedule(c *gin.Context) {
@@ -84,7 +84,7 @@ func (h *Handler) updateSchedule(c *gin.Context) {
 	if common.HandleError(c, err) {
 		return
 	}
-	c.JSON(http.StatusOK, schedule)
+	c.JSON(http.StatusOK, scheduleResponseFromModel(schedule))
 }
 
 func (h *Handler) createTimeSlot(c *gin.Context) {
@@ -107,7 +107,7 @@ func (h *Handler) createTimeSlot(c *gin.Context) {
 	if common.HandleError(c, err) {
 		return
 	}
-	c.JSON(http.StatusCreated, created)
+	c.JSON(http.StatusCreated, timeSlotResponseFromModel(created))
 }
 
 func (h *Handler) updateTimeSlot(c *gin.Context) {
@@ -128,7 +128,7 @@ func (h *Handler) updateTimeSlot(c *gin.Context) {
 	if common.HandleError(c, err) {
 		return
 	}
-	c.JSON(http.StatusOK, slot)
+	c.JSON(http.StatusOK, timeSlotResponseFromModel(slot))
 }
 
 func (h *Handler) blockTimeSlot(c *gin.Context) {
@@ -148,7 +148,7 @@ func (h *Handler) setSlotBlock(c *gin.Context, blocked bool) {
 	if common.HandleError(c, err) {
 		return
 	}
-	c.JSON(http.StatusOK, slot)
+	c.JSON(http.StatusOK, timeSlotResponseFromModel(slot))
 }
 
 type createScheduleRequest struct {

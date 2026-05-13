@@ -1,7 +1,7 @@
 info:
-  name: 15 Appointments - list
+  name: 23 Appointments - list
   type: http
-  seq: 16
+  seq: 24
 http:
   method: GET
   url: http://localhost:8081/api/v1/appointments

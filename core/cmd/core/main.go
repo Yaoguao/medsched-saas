@@ -4,6 +4,7 @@ import (
 	httpapp "base/internal/app/http"
 	"base/internal/config"
 	"base/internal/http-server/router"
+	mlclient "base/internal/integration/ml"
 	"base/internal/lib/logger/sl"
 	"base/internal/repository"
 	"base/internal/service"
@@ -46,7 +47,12 @@ func main() {
 	defer sqlDB.Close()
 
 	store := repository.NewStore(db)
-	coreService := service.New(store)
+	mlClient := mlclient.NewClient(cfg.ML.BaseURL, cfg.ML.Timeout)
+	coreService := service.New(
+		store,
+		service.WithAuth(cfg.Auth.TokenSecret, cfg.Auth.TokenTTL),
+		service.WithMLClient(mlClient),
+	)
 	handler := router.New(coreService, cfg.Env)
 
 	app := httpapp.New(

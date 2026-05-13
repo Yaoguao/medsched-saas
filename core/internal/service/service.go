@@ -1,6 +1,7 @@
 package service
 
 import (
+	"base/internal/integration/ml"
 	"errors"
 	"time"
 
@@ -8,14 +9,42 @@ import (
 )
 
 type Service struct {
-	store *repository.Store
-	now   func() time.Time
+	store       *repository.Store
+	now         func() time.Time
+	tokenSecret string
+	tokenTTL    time.Duration
+	mlClient    *ml.Client
 }
 
-func New(store *repository.Store) *Service {
-	return &Service{
-		store: store,
-		now:   time.Now,
+type Option func(*Service)
+
+func New(store *repository.Store, opts ...Option) *Service {
+	s := &Service{
+		store:       store,
+		now:         time.Now,
+		tokenSecret: "dev-secret-change-me",
+		tokenTTL:    24 * time.Hour,
+	}
+	for _, opt := range opts {
+		opt(s)
+	}
+	return s
+}
+
+func WithMLClient(client *ml.Client) Option {
+	return func(s *Service) {
+		s.mlClient = client
+	}
+}
+
+func WithAuth(secret string, ttl time.Duration) Option {
+	return func(s *Service) {
+		if secret != "" {
+			s.tokenSecret = secret
+		}
+		if ttl > 0 {
+			s.tokenTTL = ttl
+		}
 	}
 }
 

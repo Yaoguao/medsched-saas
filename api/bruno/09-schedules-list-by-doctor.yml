@@ -1,7 +1,7 @@
 info:
-  name: 10 Schedules - list by doctor
+  name: 18 Schedules - list by doctor
   type: http
-  seq: 11
+  seq: 19
 http:
   method: GET
   url: http://localhost:8081/api/v1/schedules/{{doctor_id}}

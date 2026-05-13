@@ -1,7 +1,7 @@
 info:
-  name: 17 Appointments - confirm
+  name: 25 Appointments - confirm
   type: http
-  seq: 18
+  seq: 26
 http:
   method: POST
   url: http://localhost:8081/api/v1/appointments/{{appointment_id}}/confirm

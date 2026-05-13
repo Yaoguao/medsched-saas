@@ -30,3 +30,7 @@ func (s *Store) GetDoctor(ctx context.Context, id uuid.UUID) (models.Doctor, err
 	err := s.db.WithContext(ctx).First(&doctor, "id = ?", id).Error
 	return doctor, mapGormError(err)
 }
+
+func (s *Store) UpdateDoctor(ctx context.Context, doctor *models.Doctor) error {
+	return mapGormError(s.db.WithContext(ctx).Save(doctor).Error)
+}

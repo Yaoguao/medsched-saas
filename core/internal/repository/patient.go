@@ -40,6 +40,14 @@ func (s *Store) GetPatientMedicalProfile(ctx context.Context, patientID uuid.UUI
 	return profile, mapGormError(err)
 }
 
+func (s *Store) CreatePatientMedicalProfile(ctx context.Context, profile *models.PatientMedicalProfile) error {
+	return s.db.WithContext(ctx).Create(profile).Error
+}
+
+func (s *Store) UpdatePatientMedicalProfile(ctx context.Context, profile *models.PatientMedicalProfile) error {
+	return mapGormError(s.db.WithContext(ctx).Save(profile).Error)
+}
+
 func (s *Store) UpdatePatient(ctx context.Context, patient *models.Patient) error {
 	return mapGormError(s.db.WithContext(ctx).Save(patient).Error)
 }

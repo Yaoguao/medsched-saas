@@ -1,0 +1,13 @@
+info:
+  name: 46 Notifier - cancel notification
+  type: http
+  seq: 46
+http:
+  method: DELETE
+  url: http://localhost:8082/notify/{{notifier_notification_id}}
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

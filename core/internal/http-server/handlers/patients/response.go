@@ -10,6 +10,7 @@ import (
 
 type patientResponse struct {
 	ID             uuid.UUID               `json:"id"`
+	UserID         *uuid.UUID              `json:"user_id,omitempty"`
 	FullName       string                  `json:"full_name"`
 	Gender         string                  `json:"gender"`
 	BirthDate      time.Time               `json:"birth_date"`
@@ -50,6 +51,7 @@ func patientResponsesFromModels(patients []models.Patient) []patientResponse {
 func patientResponseFromModel(patient models.Patient) patientResponse {
 	return patientResponse{
 		ID:             patient.ID,
+		UserID:         patient.UserID,
 		FullName:       patient.FullName,
 		Gender:         patient.Gender,
 		BirthDate:      patient.BirthDate,

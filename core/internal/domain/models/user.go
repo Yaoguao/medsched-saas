@@ -13,7 +13,8 @@ type User struct {
 	PasswordHash string    `gorm:"type:text;not null"`
 	Status       string    `gorm:"type:varchar(32);not null;default:'ACTIVE'"`
 
-	Doctor *Doctor `gorm:"foreignKey:UserID"`
+	Doctor  *Doctor  `gorm:"foreignKey:UserID"`
+	Patient *Patient `gorm:"foreignKey:UserID"`
 
 	BaseModel
 }

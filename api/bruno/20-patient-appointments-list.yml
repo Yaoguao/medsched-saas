@@ -1,7 +1,7 @@
 info:
-  name: 21 Patients - appointments list
+  name: 12 Patients - appointments list
   type: http
-  seq: 22
+  seq: 13
 http:
   method: GET
   url: http://localhost:8081/api/v1/patients/{{patient_id}}/appointments

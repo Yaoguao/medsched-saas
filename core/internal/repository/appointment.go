@@ -19,6 +19,7 @@ func (s *Store) GetAppointment(ctx context.Context, id uuid.UUID) (models.Appoin
 	var appointment models.Appointment
 	err := s.db.WithContext(ctx).
 		Preload("Patient").
+		Preload("Patient.MedicalProfile").
 		Preload("Doctor").
 		Preload("TimeSlot").
 		Preload("StatusHistory", func(db *gorm.DB) *gorm.DB {
@@ -53,6 +54,24 @@ func (s *Store) ListAppointments(ctx context.Context, page pagination.Page) ([]m
 		Limit(page.Limit).
 		Offset(page.Offset).
 		Order("appointment_at desc").
+		Find(&appointments).Error
+	return appointments, err
+}
+
+func (s *Store) ListCompletedAppointmentsForTraining(ctx context.Context, limit int) ([]models.Appointment, error) {
+	if limit <= 0 {
+		limit = 5000
+	}
+
+	var appointments []models.Appointment
+	err := s.db.WithContext(ctx).
+		Preload("Patient").
+		Preload("Patient.MedicalProfile").
+		Preload("Doctor").
+		Preload("TimeSlot").
+		Where("showed_up IS NOT NULL").
+		Order("appointment_at asc").
+		Limit(limit).
 		Find(&appointments).Error
 	return appointments, err
 }

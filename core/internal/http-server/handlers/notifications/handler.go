@@ -46,7 +46,7 @@ func (h *Handler) create(c *gin.Context) {
 	if common.HandleError(c, err) {
 		return
 	}
-	c.JSON(http.StatusCreated, created)
+	c.JSON(http.StatusCreated, responseFromModel(created))
 }
 
 func (h *Handler) get(c *gin.Context) {
@@ -58,7 +58,7 @@ func (h *Handler) get(c *gin.Context) {
 	if common.HandleError(c, err) {
 		return
 	}
-	c.JSON(http.StatusOK, notification)
+	c.JSON(http.StatusOK, responseFromModel(notification))
 }
 
 func (h *Handler) listByAppointment(c *gin.Context) {
@@ -71,7 +71,7 @@ func (h *Handler) listByAppointment(c *gin.Context) {
 	if common.HandleError(c, err) {
 		return
 	}
-	common.RespondList(c, notifications, page)
+	common.RespondList(c, responsesFromModels(notifications), page)
 }
 
 type createRequest struct {

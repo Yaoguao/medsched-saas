@@ -1,7 +1,7 @@
 info:
-  name: 13 Slots - unblock
+  name: 21 Slots - unblock
   type: http
-  seq: 14
+  seq: 22
 http:
   method: POST
   url: http://localhost:8081/api/v1/slots/{{slot_id}}/unblock

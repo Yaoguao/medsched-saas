@@ -1,20 +1,46 @@
-# notifier
+# notificator
 
-Небольшой сервис для отправки отложенных/планируемых уведомлений.
+Отдельный сервис управления уведомлениями MedSched-SaaS.
 
-> Репозиторий содержит служебные каталоги `cmd/`, `internal/`, `config/` и конфигурацию для Docker Compose. :contentReference[oaicite:1]{index=1}
+## Возможности
 
-## Что это делает
-Сервис принимает задачи на отправку уведомлений и выполняет их позже (по расписанию или с задержкой). Подходит как шаблон для интеграции в систему фоновых задач или как учебный проект.
+- создание, получение, список, отмена и ручная отправка уведомлений;
+- хранение уведомлений в Redis;
+- планирование отправки через RabbitMQ;
+- шаблоны уведомлений с переменными вида `{{patient_name}}`;
+- каналы `email`, `telegram`, `sms` со stub-отправителями;
+- прием команд из очереди в формате envelope.
 
-## Особенности
-- Простая структура на Go (пакеты `cmd`, `internal`, `config`).
-- Поддержка контейнерного запуска через `docker-compose`.
-- Конфигурируется через `.env` / файлы конфигурации.
+## HTTP
 
-## Требования
-- Go (рекомендуется версия 1.20+)
-- Docker & Docker Compose (если используете контейнерный запуск)
-- (опционально) Redis / БД / брокер сообщений — зависит от реализации в `internal/` (подключение через конфиг)
+Base URL для локального конфига: `http://localhost:8082`.
 
+- `POST /notify` - создать уведомление;
+- `GET /notify` - список уведомлений;
+- `GET /notify/{id}` - получить уведомление;
+- `POST /notify/{id}/send` - отправить сразу;
+- `DELETE /notify/{id}` - отменить;
+- `POST /templates` - создать или обновить шаблон;
+- `GET /templates` - список шаблонов;
+- `GET /templates/{id}` - получить шаблон;
+- `PUT /templates/{id}` - обновить шаблон;
+- `DELETE /templates/{id}` - удалить шаблон.
 
+## RabbitMQ Command Envelope
+
+```json
+{
+  "type": "notification.schedule",
+  "notification": {
+    "channel": "email",
+    "recipient": "patient@example.com",
+    "template_id": "appointment_reminder",
+    "variables": {
+      "patient_name": "Пациент Тестовый"
+    },
+    "send_at": "2030-01-15T09:00:00Z"
+  }
+}
+```
+
+Поддерживаемые `type`: `notification.create`, `notification.schedule`, `notification.cancel`, `notification.send_now`, `template.upsert`.

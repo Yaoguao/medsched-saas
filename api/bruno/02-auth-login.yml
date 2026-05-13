@@ -1,0 +1,23 @@
+info:
+  name: 02 Auth - login
+  type: http
+  seq: 3
+http:
+  method: POST
+  url: http://localhost:8081/api/v1/auth/login
+  headers:
+  - name: Content-Type
+    value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "email": "patient@example.com",
+        "password": "password123"
+      }
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

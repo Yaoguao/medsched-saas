@@ -1,0 +1,13 @@
+info:
+  name: 52 Core - appointment predict no-show
+  type: http
+  seq: 52
+http:
+  method: POST
+  url: http://localhost:8081/api/v1/appointments/{{appointment_id}}/predict-no-show
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

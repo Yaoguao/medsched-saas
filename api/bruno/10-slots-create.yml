@@ -1,7 +1,7 @@
 info:
-  name: 11 Slots - create
+  name: 19 Slots - create
   type: http
-  seq: 12
+  seq: 20
 http:
   method: POST
   url: http://localhost:8081/api/v1/schedules/{{schedule_id}}/slots

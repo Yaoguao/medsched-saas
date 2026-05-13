@@ -23,6 +23,7 @@ func (h *Handler) Register(r gin.IRouter) {
 	r.GET("/doctors", h.list)
 	r.POST("/doctors", h.create)
 	r.GET("/doctors/:doctor_id", h.get)
+	r.PATCH("/doctors/:doctor_id", h.update)
 }
 
 func (h *Handler) create(c *gin.Context) {
@@ -42,7 +43,7 @@ func (h *Handler) create(c *gin.Context) {
 	if common.HandleError(c, err) {
 		return
 	}
-	c.JSON(http.StatusCreated, created)
+	c.JSON(http.StatusCreated, responseFromModel(created))
 }
 
 func (h *Handler) list(c *gin.Context) {
@@ -51,7 +52,7 @@ func (h *Handler) list(c *gin.Context) {
 	if common.HandleError(c, err) {
 		return
 	}
-	common.RespondList(c, doctors, page)
+	common.RespondList(c, responsesFromModels(doctors), page)
 }
 
 func (h *Handler) get(c *gin.Context) {
@@ -63,7 +64,32 @@ func (h *Handler) get(c *gin.Context) {
 	if common.HandleError(c, err) {
 		return
 	}
-	c.JSON(http.StatusOK, doctor)
+	c.JSON(http.StatusOK, responseFromModel(doctor))
+}
+
+func (h *Handler) update(c *gin.Context) {
+	id, ok := common.PathUUID(c, "doctor_id")
+	if !ok {
+		return
+	}
+
+	var req updateRequest
+	if !common.BindJSON(c, &req) {
+		return
+	}
+
+	doctor, err := h.svc.UpdateDoctor(c.Request.Context(), id, service.DoctorPatch{
+		UserID:          req.UserID,
+		FullName:        req.FullName,
+		Specialty:       req.Specialty,
+		Cabinet:         req.Cabinet,
+		ExperienceYears: req.ExperienceYears,
+		Status:          req.Status,
+	})
+	if common.HandleError(c, err) {
+		return
+	}
+	c.JSON(http.StatusOK, responseFromModel(doctor))
 }
 
 type createRequest struct {
@@ -73,4 +99,13 @@ type createRequest struct {
 	Cabinet         string     `json:"cabinet"`
 	ExperienceYears int        `json:"experience_years"`
 	Status          string     `json:"status"`
+}
+
+type updateRequest struct {
+	UserID          *uuid.UUID `json:"user_id"`
+	FullName        *string    `json:"full_name"`
+	Specialty       *string    `json:"specialty"`
+	Cabinet         *string    `json:"cabinet"`
+	ExperienceYears *int       `json:"experience_years"`
+	Status          *string    `json:"status"`
 }

@@ -1,7 +1,7 @@
 info:
-  name: 19 Appointments - check-in
+  name: 27 Appointments - check-in
   type: http
-  seq: 20
+  seq: 28
 http:
   method: POST
   url: http://localhost:8081/api/v1/appointments/{{appointment_id}}/check-in

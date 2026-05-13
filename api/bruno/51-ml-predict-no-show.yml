@@ -1,0 +1,43 @@
+info:
+  name: 51 ML - predict no-show
+  type: http
+  seq: 51
+http:
+  method: POST
+  url: http://localhost:8000/predict/no-show
+  headers:
+  - name: Content-Type
+    value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "patient": {
+          "age": 36,
+          "gender": "M",
+          "neighbourhood": "CENTER",
+          "scholarship": false,
+          "has_hypertension": true,
+          "has_diabetes": false,
+          "has_alcoholism": false,
+          "has_handicap": false
+        },
+        "appointment": {
+          "scheduled_at": "2026-05-13T15:00:00Z",
+          "appointment_at": "2026-05-20T10:00:00Z",
+          "booking_channel": "WEB",
+          "visit_type": "PRIMARY",
+          "doctor_specialty": "THERAPIST",
+          "sms_received": true
+        },
+        "history": {
+          "previous_appointments_count": 5,
+          "previous_no_show_count": 2
+        }
+      }
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

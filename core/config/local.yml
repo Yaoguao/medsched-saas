@@ -11,4 +11,9 @@ storage:
     conn_attempts: 10
     base_retry_delay: 100ms
     max_retry_delay: 5s
-
+auth:
+  token_secret: "dev-secret-change-me"
+  token_ttl: 24h
+ml:
+  base_url: "http://localhost:8000"
+  timeout: 3s

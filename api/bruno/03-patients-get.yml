@@ -1,15 +1,18 @@
 info:
-  name: 03 Patients - get by id
+  name: 08 Patients - get by id
   type: http
-  seq: 4
+  seq: 9
+
 http:
   method: GET
   url: http://localhost:8081/api/v1/patients/{{patient_id}}
   auth: inherit
+
 runtime:
   variables:
-  - name: patient_id
-    value: fc3aa41a-7e8d-4cbe-8ceb-2689830117a7
+    - name: patient_id
+      value: 44c55caa-ff9e-4c5f-bf84-f0aa0d2ef533
+
 settings:
   encodeUrl: true
   timeout: 0

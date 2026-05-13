@@ -1,7 +1,7 @@
 info:
-  name: 12 Slots - block
+  name: 20 Slots - block
   type: http
-  seq: 13
+  seq: 21
 http:
   method: POST
   url: http://localhost:8081/api/v1/slots/{{slot_id}}/block

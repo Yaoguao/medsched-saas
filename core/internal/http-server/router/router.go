@@ -9,6 +9,7 @@ import (
 	"base/internal/http-server/handlers/predictions"
 	"base/internal/http-server/handlers/reports"
 	"base/internal/http-server/handlers/schedules"
+	"base/internal/http-server/handlers/users"
 	"base/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -26,6 +27,7 @@ func New(svc *service.Service, env string) *gin.Engine {
 
 	api := r.Group("/api/v1")
 	health.New().Register(api)
+	users.New(svc).Register(api)
 	patients.New(svc).Register(api)
 	doctors.New(svc).Register(api)
 	schedules.New(svc).Register(api)

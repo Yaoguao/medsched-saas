@@ -1,7 +1,7 @@
 info:
-  name: 20 Appointments - no-show
+  name: 28 Appointments - no-show
   type: http
-  seq: 21
+  seq: 29
 http:
   method: POST
   url: http://localhost:8081/api/v1/appointments/{{appointment_id}}/no-show

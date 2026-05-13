@@ -1,7 +1,7 @@
 info:
-  name: 27 Reports - appointments
+  name: 34 Reports - appointments
   type: http
-  seq: 28
+  seq: 35
 http:
   method: GET
   url: http://localhost:8081/api/v1/reports/appointments

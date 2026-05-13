@@ -8,12 +8,9 @@ import (
 	"syscall"
 	"time"
 
-	"encoding/json"
-
 	"notificator/internal/config"
 	"notificator/internal/http-server/handlers/notification"
 	"notificator/internal/lib/logger/logr"
-	"notificator/internal/models"
 	"notificator/internal/notifier/sender"
 	svc "notificator/internal/service"
 	cons "notificator/internal/storage/rabbitmq/consumer"
@@ -43,10 +40,14 @@ func main() {
 	senders := map[string]svc.Sender{
 		"email":    sender.NewEmailSender(log),
 		"telegram": sender.NewTelegramSender(log),
+		"sms":      sender.NewSMSSender(log),
 	}
 
 	// init service
 	notifier := svc.NewNotifierService(rds, producer, senders, cfg, log)
+	if err := notifier.EnsureDefaultTemplates(context.Background()); err != nil {
+		log.WithError(err).Fatal("failed to seed default notification templates")
+	}
 
 	// start consumer to schedule incoming messages
 	consumer, err := cons.NewConsumer(cfg.RabbitMQ.URL, cfg.RabbitMQ.ReadyQueue)
@@ -55,15 +56,10 @@ func main() {
 	}
 	defer consumer.Close()
 
-	// handler for consumer: unmarshal and schedule
+	// handler for consumer: supports legacy notification payloads and command envelopes.
 	_ = consumer.Start(func(body []byte) error {
-		var n models.Notification
-		if err := json.Unmarshal(body, &n); err != nil {
-			log.WithError(err).Error("invalid message body")
-			return nil
-		}
-		if err := notifier.ScheduleNotification(context.Background(), n); err != nil {
-			log.WithError(err).Error("failed to schedule notification")
+		if err := notifier.HandleCommand(context.Background(), body); err != nil {
+			log.WithError(err).Error("failed to handle message")
 		}
 		return nil
 	})
@@ -72,6 +68,10 @@ func main() {
 	r := chi.NewRouter()
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
+	})
+	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ok"))
 	})
 
 	notifHandler := notification.NewHandler(notifier, log)

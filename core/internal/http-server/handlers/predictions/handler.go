@@ -2,6 +2,7 @@ package predictions
 
 import (
 	"net/http"
+	"strconv"
 	"time"
 
 	"base/internal/domain/models"
@@ -23,6 +24,8 @@ func New(svc *service.Service) *Handler {
 func (h *Handler) Register(r gin.IRouter) {
 	r.POST("/ml/predictions", h.create)
 	r.GET("/ml/predictions/:prediction_id", h.get)
+	r.GET("/ml/training/no-show-dataset", h.trainingNoShowDataset)
+	r.POST("/appointments/:appointment_id/predict-no-show", h.predictAppointmentNoShow)
 }
 
 func (h *Handler) create(c *gin.Context) {
@@ -42,7 +45,7 @@ func (h *Handler) create(c *gin.Context) {
 	if common.HandleError(c, err) {
 		return
 	}
-	c.JSON(http.StatusCreated, created)
+	c.JSON(http.StatusCreated, responseFromModel(created))
 }
 
 func (h *Handler) get(c *gin.Context) {
@@ -54,7 +57,27 @@ func (h *Handler) get(c *gin.Context) {
 	if common.HandleError(c, err) {
 		return
 	}
-	c.JSON(http.StatusOK, prediction)
+	c.JSON(http.StatusOK, responseFromModel(prediction))
+}
+
+func (h *Handler) predictAppointmentNoShow(c *gin.Context) {
+	id, ok := common.PathUUID(c, "appointment_id")
+	if !ok {
+		return
+	}
+	prediction, err := h.svc.PredictAppointmentNoShow(c.Request.Context(), id)
+	if common.HandleError(c, err) {
+		return
+	}
+	c.JSON(http.StatusCreated, responseFromModel(prediction))
+}
+
+func (h *Handler) trainingNoShowDataset(c *gin.Context) {
+	rows, err := h.svc.ExportNoShowTrainingDataset(c.Request.Context(), queryInt(c, "limit"))
+	if common.HandleError(c, err) {
+		return
+	}
+	c.JSON(http.StatusOK, trainingDatasetResponseFromRows(rows))
 }
 
 type createRequest struct {
@@ -64,4 +87,16 @@ type createRequest struct {
 	ModelVersion  string                     `json:"model_version" binding:"required"`
 	RequestedAt   time.Time                  `json:"requested_at"`
 	ReceivedAt    time.Time                  `json:"received_at"`
+}
+
+func queryInt(c *gin.Context, name string) int {
+	value := c.Query(name)
+	if value == "" {
+		return 0
+	}
+	parsed, err := strconv.Atoi(value)
+	if err != nil {
+		return 0
+	}
+	return parsed
 }

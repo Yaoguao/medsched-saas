@@ -1,7 +1,7 @@
 info:
-  name: '09 Schedules - create'
+  name: 17 Schedules - create
   type: http
-  seq: 10
+  seq: 18
 http:
   method: POST
   url: http://localhost:8081/api/v1/schedules

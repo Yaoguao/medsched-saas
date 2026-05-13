@@ -37,6 +37,14 @@ func (s *StorageRedis) SetWithTTL(ctx context.Context, key string, val models.No
 	return s.rdb.Set(ctx, key, b, ttl).Err()
 }
 
+func (s *StorageRedis) SetTemplate(ctx context.Context, key string, val models.NotificationTemplate) error {
+	b, err := json.Marshal(val)
+	if err != nil {
+		return err
+	}
+	return s.rdb.Set(ctx, key, b, 0).Err()
+}
+
 func (s *StorageRedis) Get(ctx context.Context, key string) (string, error) {
 	val, err := s.rdb.Get(ctx, key).Result()
 	if err != nil {
@@ -61,13 +69,25 @@ func (s *StorageRedis) UpdateStatus(ctx context.Context, key, status string) err
 	}
 
 	notif.Status = status
+	notif.UpdatedAt = time.Now()
 
 	updated, err := json.Marshal(notif)
 	if err != nil {
 		return err
 	}
 
-	return s.rdb.Set(ctx, key, updated, 0).Err()
+	return s.rdb.Set(ctx, key, updated, redis.KeepTTL).Err()
+}
+
+func (s *StorageRedis) UpdateNotification(ctx context.Context, key string, notif models.Notification) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	updated, err := json.Marshal(notif)
+	if err != nil {
+		return err
+	}
+	return s.rdb.Set(ctx, key, updated, redis.KeepTTL).Err()
 }
 
 func (s *StorageRedis) Delete(ctx context.Context, key string) error {
