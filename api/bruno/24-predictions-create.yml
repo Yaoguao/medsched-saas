@@ -1,0 +1,25 @@
+info:
+  name: 25 Predictions - create
+  type: http
+  seq: 26
+http:
+  method: POST
+  url: http://localhost:8081/api/v1/ml/predictions
+  auth: inherit
+  headers:
+  - name: Content-Type
+    value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "appointment_id": "{{appointment_id}}",
+        "probability": 0.82,
+        "risk_level": "HIGH",
+        "model_version": "manual-test-1.0.0"
+      }
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

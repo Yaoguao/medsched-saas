@@ -1,0 +1,13 @@
+info:
+  name: 13 Slots - unblock
+  type: http
+  seq: 14
+http:
+  method: POST
+  url: http://localhost:8081/api/v1/slots/{{slot_id}}/unblock
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

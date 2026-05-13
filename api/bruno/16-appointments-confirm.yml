@@ -1,0 +1,22 @@
+info:
+  name: 17 Appointments - confirm
+  type: http
+  seq: 18
+http:
+  method: POST
+  url: http://localhost:8081/api/v1/appointments/{{appointment_id}}/confirm
+  auth: inherit
+  headers:
+  - name: Content-Type
+    value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "reason": "confirmed by test request"
+      }
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

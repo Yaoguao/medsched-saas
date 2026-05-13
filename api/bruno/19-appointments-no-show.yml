@@ -1,0 +1,22 @@
+info:
+  name: 20 Appointments - no-show
+  type: http
+  seq: 21
+http:
+  method: POST
+  url: http://localhost:8081/api/v1/appointments/{{appointment_id}}/no-show
+  auth: inherit
+  headers:
+  - name: Content-Type
+    value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "reason": "patient did not arrive"
+      }
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

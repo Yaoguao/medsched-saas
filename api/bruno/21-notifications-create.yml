@@ -1,0 +1,27 @@
+info:
+  name: 22 Notifications - create
+  type: http
+  seq: 23
+http:
+  method: POST
+  url: http://localhost:8081/api/v1/notifications/send
+  auth: inherit
+  headers:
+  - name: Content-Type
+    value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "appointment_id": "{{appointment_id}}",
+        "patient_id": "{{patient_id}}",
+        "channel": "SMS",
+        "type": "REMINDER",
+        "scheduled_at": "2026-05-13T15:00:00Z",
+        "provider": "stub"
+      }
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

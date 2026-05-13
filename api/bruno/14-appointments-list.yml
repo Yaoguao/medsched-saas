@@ -1,0 +1,20 @@
+info:
+  name: 15 Appointments - list
+  type: http
+  seq: 16
+http:
+  method: GET
+  url: http://localhost:8081/api/v1/appointments
+  auth: inherit
+  params:
+  - name: limit
+    value: '50'
+    type: query
+  - name: offset
+    value: '0'
+    type: query
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

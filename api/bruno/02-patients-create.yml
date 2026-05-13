@@ -1,0 +1,39 @@
+info:
+  name: 02 Patients - create
+  type: http
+  seq: 3
+http:
+  method: POST
+  url: http://localhost:8081/api/v1/patients
+  auth: inherit
+  headers:
+  - name: Content-Type
+    value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "full_name": "Иванов Иван Иванович",
+        "gender": "M",
+        "birth_date": "1990-01-15T00:00:00Z",
+        "age": 36,
+        "phone": "+79990000001",
+        "email": "ivanov@example.com",
+        "neighbourhood": "CENTER",
+        "scholarship": false,
+        "medical_profile": {
+          "chronic_conditions": "hypertension",
+          "risk_factors": "missed previous visits",
+          "allergies": "",
+          "notes": "test patient",
+          "has_hypertension": true,
+          "has_diabetes": false,
+          "has_alcoholism": false,
+          "has_handicap": false
+        }
+      }
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

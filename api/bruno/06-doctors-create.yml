@@ -1,0 +1,26 @@
+info:
+  name: 07 Doctors - create
+  type: http
+  seq: 8
+http:
+  method: POST
+  url: http://localhost:8081/api/v1/doctors
+  headers:
+  - name: Content-Type
+    value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "full_name": "Петров Петр Петрович",
+        "specialty": "Терапевт",
+        "cabinet": "201",
+        "experience_years": 12,
+        "status": "ACTIVE"
+      }
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

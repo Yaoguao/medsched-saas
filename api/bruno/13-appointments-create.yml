@@ -1,0 +1,25 @@
+info:
+  name: 14 Appointments - create
+  type: http
+  seq: 15
+http:
+  method: POST
+  url: http://localhost:8081/api/v1/appointments
+  auth: inherit
+  headers:
+  - name: Content-Type
+    value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "patient_id": "{{patient_id}}",
+        "time_slot_id": "{{slot_id}}",
+        "booking_channel": "WEB",
+        "visit_type": "CONSULTATION"
+      }
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

@@ -2,14 +2,12 @@ package main
 
 import (
 	"base/internal/config"
-	"base/internal/domain/models"
 	"base/internal/lib/logger/sl"
+	"base/internal/storage/postgres"
+	"context"
 	"log/slog"
 	"os"
-
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
+	"time"
 )
 
 func main() {
@@ -19,32 +17,15 @@ func main() {
 
 	log.Debug("config loaded", "cfg", cfg)
 
-	db, err := gorm.Open(postgres.New(postgres.Config{
-		DSN: cfg.StorageConfig.Postgres.DSN,
-	}), &gorm.Config{
-		Logger: logger.NewSlogLogger(log, logger.Config{LogLevel: logger.Info}),
-	})
-
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	db, err := postgres.Open(ctx, cfg.StorageConfig, log)
 	if err != nil {
 		log.Info("Failed to connect to database", slog.String("error", err.Error()))
 		os.Exit(1)
 	}
 
-	//ctx := context.Background()
-
-	err = db.AutoMigrate(
-		&models.User{},
-		&models.Patient{},
-		&models.PatientMedicalProfile{},
-		&models.Doctor{},
-		&models.Schedule{},
-		&models.TimeSlot{},
-		&models.Appointment{},
-		&models.AppointmentStatusHistory{},
-		&models.Notification{},
-		&models.PredictionResult{},
-	)
-	if err != nil {
+	if err := postgres.AutoMigrate(db); err != nil {
 		log.Error("Failed to migrate models", slog.String("error", err.Error()))
 		os.Exit(1)
 	}

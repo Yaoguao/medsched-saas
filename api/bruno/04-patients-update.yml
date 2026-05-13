@@ -1,0 +1,23 @@
+info:
+  name: 04 Patients - update
+  type: http
+  seq: 5
+http:
+  method: PATCH
+  url: http://localhost:8081/api/v1/patients/{{patient_id}}
+  auth: inherit
+  headers:
+  - name: Content-Type
+    value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "phone": "+79990000002",
+        "neighbourhood": "NORTH"
+      }
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

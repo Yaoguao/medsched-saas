@@ -1,0 +1,22 @@
+info:
+  name: 18 Appointments - cancel
+  type: http
+  seq: 19
+http:
+  method: POST
+  url: http://localhost:8081/api/v1/appointments/{{appointment_id}}/cancel
+  auth: inherit
+  headers:
+  - name: Content-Type
+    value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "reason": "cancelled by test request"
+      }
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

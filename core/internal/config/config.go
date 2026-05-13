@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/ilyakaznacheev/cleanenv"
@@ -33,6 +34,9 @@ type StorageConfig struct {
 }
 
 func MustLoad() *Config {
+	loadEnvFile(".env")
+	loadEnvFile("../.env")
+
 	configPath := os.Getenv("CONFIG_PATH")
 	if configPath == "" {
 		panic("Load config path is failed")
@@ -72,4 +76,28 @@ func MustLoad() *Config {
 
 	cfg.StorageConfig.Postgres.DSN = fmt.Sprintf("host=localhost user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=Asia/Shanghai", user, pass, db, port)
 	return &cfg
+}
+
+func loadEnvFile(path string) {
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return
+	}
+
+	for _, line := range strings.Split(string(content), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") || !strings.Contains(line, "=") {
+			continue
+		}
+
+		parts := strings.SplitN(line, "=", 2)
+		key := strings.TrimSpace(parts[0])
+		value := strings.Trim(strings.TrimSpace(parts[1]), `"'`)
+		if key == "" {
+			continue
+		}
+		if os.Getenv(key) == "" {
+			_ = os.Setenv(key, value)
+		}
+	}
 }
