@@ -37,6 +37,14 @@ func (s *StorageRedis) SetWithTTL(ctx context.Context, key string, val models.No
 	return s.rdb.Set(ctx, key, b, ttl).Err()
 }
 
+func (s *StorageRedis) SetDeadLetter(ctx context.Context, key string, val models.DeadLetter, ttl time.Duration) error {
+	b, err := json.Marshal(val)
+	if err != nil {
+		return err
+	}
+	return s.rdb.Set(ctx, key, b, ttl).Err()
+}
+
 func (s *StorageRedis) SetTemplate(ctx context.Context, key string, val models.NotificationTemplate) error {
 	b, err := json.Marshal(val)
 	if err != nil {

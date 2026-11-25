@@ -23,6 +23,8 @@ rabbit_mq:
 notifier:
   retry_initial_delay: 1s
   max_retries: 5
+  core_callback_url: "http://localhost:8081/api/v1"
+  core_callback_secret: "dev-notifier-callback-secret"
   channels:
     - "email"
     - "telegram"

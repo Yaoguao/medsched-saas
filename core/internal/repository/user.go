@@ -19,6 +19,7 @@ func (s *Store) ListUsers(ctx context.Context, page pagination.Page) ([]models.U
 	var users []models.User
 	err := s.db.WithContext(ctx).
 		Preload("Patient").
+		Preload("Doctor").
 		Limit(page.Limit).
 		Offset(page.Offset).
 		Order("created_at desc").
@@ -30,6 +31,7 @@ func (s *Store) GetUser(ctx context.Context, id uuid.UUID) (models.User, error) 
 	var user models.User
 	err := s.db.WithContext(ctx).
 		Preload("Patient").
+		Preload("Doctor").
 		First(&user, "id = ?", id).Error
 	return user, mapGormError(err)
 }
@@ -38,6 +40,11 @@ func (s *Store) GetUserByEmail(ctx context.Context, email string) (models.User, 
 	var user models.User
 	err := s.db.WithContext(ctx).
 		Preload("Patient").
+		Preload("Doctor").
 		First(&user, "email = ?", email).Error
 	return user, mapGormError(err)
+}
+
+func (s *Store) UpdateUser(ctx context.Context, user *models.User) error {
+	return mapGormError(s.db.WithContext(ctx).Save(user).Error)
 }

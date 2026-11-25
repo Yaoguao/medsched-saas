@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"base/internal/domain/models"
+	"base/internal/integration/ehr"
 
 	"github.com/google/uuid"
 )
@@ -17,6 +18,7 @@ type PatientPatch struct {
 	Email         *string
 	Neighbourhood *string
 	Scholarship   *bool
+	ExternalEHRID *string
 }
 
 type PatientMedicalProfilePatch struct {
@@ -63,16 +65,41 @@ type CreateAppointmentRequest struct {
 	ChangedBy      *uuid.UUID
 }
 
+type RescheduleAppointmentRequest struct {
+	TimeSlotID uuid.UUID
+	ChangedBy  *uuid.UUID
+	Reason     string
+}
+
+type CreateRescheduleProposalRequest struct {
+	TimeSlotID  uuid.UUID
+	RequestedBy *uuid.UUID
+	Reason      string
+}
+
+type RespondRescheduleProposalRequest struct {
+	RespondedBy *uuid.UUID
+	Reason      string
+}
+
 type CreateUserRequest struct {
-	FullName string
 	Email    string
 	Phone    string
 	Password string
 }
 
-type RegisteredPatientUser struct {
-	User    models.User
-	Patient models.Patient
+type CreateStaffUserRequest struct {
+	Role     models.UserRole
+	Email    string
+	Phone    string
+	Password string
+}
+
+type UserPatch struct {
+	Role   *models.UserRole
+	Status *string
+	Email  *string
+	Phone  *string
 }
 
 type AuthToken struct {
@@ -82,7 +109,43 @@ type AuthToken struct {
 	User        models.User
 }
 
+type EHRSyncResult struct {
+	Patient models.Patient
+	Event   models.IntegrationEvent
+}
+
+type EHRPatientPreview struct {
+	Provider models.IntegrationProvider
+	Link     models.ExternalEntityLink
+	External ehr.PatientProfile
+	Changes  []EHRFieldChange
+}
+
+type EHRFieldChange struct {
+	Field    string
+	Current  any
+	External any
+	Changed  bool
+}
+
+type SyncPatientEHRRequest struct {
+	ProviderID uuid.UUID
+	Fields     []string
+	ActorID    *uuid.UUID
+}
+
+type IntegrationEventFilter struct {
+	Provider   string
+	Status     string
+	EntityType string
+	EntityID   *uuid.UUID
+	From       time.Time
+	To         time.Time
+}
+
 type NoShowTrainingRow struct {
+	PatientID                 uuid.UUID
+	AppointmentAt             time.Time
 	Age                       int
 	Gender                    string
 	Neighbourhood             string
@@ -92,6 +155,10 @@ type NoShowTrainingRow struct {
 	HasAlcoholism             bool
 	HasHandicap               bool
 	SMSReceived               bool
+	NotificationCount         int
+	SentNotifications         int
+	FailedNotifications       int
+	PendingNotifications      int
 	LeadTimeDays              int
 	AppointmentWeekday        int
 	AppointmentHour           int
@@ -102,4 +169,12 @@ type NoShowTrainingRow struct {
 	VisitType                 string
 	DoctorSpecialty           string
 	NoShow                    bool
+}
+
+type MLModelInfo struct {
+	Loaded       bool
+	ModelVersion string
+	Algorithm    string
+	ArtifactPath string
+	Metrics      map[string]any
 }

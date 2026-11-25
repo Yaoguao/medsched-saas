@@ -2,6 +2,9 @@ opencollection: 1.0.0
 
 info:
   name: api-meedsaas
+auth:
+  type: bearer
+  token: "{{access_token}}"
 bundled: false
 extensions:
   bruno:

@@ -33,6 +33,14 @@ func (s *Store) GetPatient(ctx context.Context, id uuid.UUID) (models.Patient, e
 	return patient, mapGormError(err)
 }
 
+func (s *Store) GetPatientByUserID(ctx context.Context, userID uuid.UUID) (models.Patient, error) {
+	var patient models.Patient
+	err := s.db.WithContext(ctx).
+		Preload("MedicalProfile").
+		First(&patient, "user_id = ?", userID).Error
+	return patient, mapGormError(err)
+}
+
 func (s *Store) GetPatientMedicalProfile(ctx context.Context, patientID uuid.UUID) (models.PatientMedicalProfile, error) {
 	var profile models.PatientMedicalProfile
 	err := s.db.WithContext(ctx).
@@ -52,13 +60,20 @@ func (s *Store) UpdatePatient(ctx context.Context, patient *models.Patient) erro
 	return mapGormError(s.db.WithContext(ctx).Save(patient).Error)
 }
 
+func (s *Store) CreateIntegrationEvent(ctx context.Context, event *models.IntegrationEvent) error {
+	return mapGormError(s.db.WithContext(ctx).Create(event).Error)
+}
+
 func (s *Store) ListPatientAppointments(ctx context.Context, patientID uuid.UUID, page pagination.Page) ([]models.Appointment, error) {
 	page = pagination.Normalize(page)
 
 	var appointments []models.Appointment
 	err := s.db.WithContext(ctx).
+		Preload("Patient").
+		Preload("Patient.MedicalProfile").
 		Preload("Doctor").
 		Preload("TimeSlot").
+		Preload("PredictionResult").
 		Where("patient_id = ?", patientID).
 		Limit(page.Limit).
 		Offset(page.Offset).

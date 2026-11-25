@@ -1,0 +1,27 @@
+info:
+  name: 04 Users - create staff
+  type: http
+  seq: 6
+
+http:
+  method: POST
+  url: http://localhost:8081/api/v1/users/staff
+  headers:
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "role": "DOCTOR",
+        "email": "doctor1@example.com",
+        "phone": "+79990000888",
+        "password": "password123"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

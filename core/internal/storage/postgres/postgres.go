@@ -70,7 +70,7 @@ func Open(ctx context.Context, cfg config.StorageConfig, log *slog.Logger) (*gor
 }
 
 func AutoMigrate(db *gorm.DB) error {
-	return db.AutoMigrate(
+	if err := db.AutoMigrate(
 		&models.User{},
 		&models.Patient{},
 		&models.PatientMedicalProfile{},
@@ -79,7 +79,20 @@ func AutoMigrate(db *gorm.DB) error {
 		&models.TimeSlot{},
 		&models.Appointment{},
 		&models.AppointmentStatusHistory{},
+		&models.AppointmentRescheduleProposal{},
 		&models.Notification{},
 		&models.PredictionResult{},
-	)
+		&models.IntegrationProvider{},
+		&models.ExternalEntityLink{},
+		&models.IntegrationEvent{},
+		&models.MLTrainingJob{},
+		&models.MLModelVersion{},
+	); err != nil {
+		return err
+	}
+
+	if db.Migrator().HasColumn("users", "full_name") {
+		return db.Migrator().DropColumn("users", "full_name")
+	}
+	return nil
 }

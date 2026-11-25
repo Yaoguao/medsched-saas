@@ -12,7 +12,7 @@ import (
 func TestRouterHealth(t *testing.T) {
 	t.Parallel()
 
-	r := New(service.New(repository.NewStore(nil)), "test")
+	r := New(service.New(repository.NewStore(nil)), "test", "")
 
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	rec := httptest.NewRecorder()

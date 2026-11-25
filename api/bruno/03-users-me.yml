@@ -1,22 +1,12 @@
 info:
   name: 03 Users - me
   type: http
-  seq: 4
+  seq: 5
 
 http:
   method: GET
   url: http://localhost:8081/api/v1/users/me
-  headers:
-    - name: Authorization
-      value: Bearer {{access_token}}
-  auth:
-    type: bearer
-    token: "{{JWT_TOKEN}}"
-
-runtime:
-  variables:
-    - name: JWT_TOKEN
-      value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InBhdGllbnQxQGV4YW1wbGUuY29tIiwiZXhwIjoxNzc4NzU2OTc3LCJyb2xlIjoiUEFUSUVOVCIsInVpZCI6IjY4N2MyYjlkLTg5N2QtNDlkZS04NWZkLWRiZDAzMDVmMDhkOCJ9.47c-_reySe-Z9xzM-4HXqiSsabBML7nM_2Cb9pyvgrY
+  auth: inherit
 
 settings:
   encodeUrl: true

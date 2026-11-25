@@ -6,12 +6,15 @@ info:
 http:
   method: GET
   url: http://localhost:8081/api/v1/patients/{{patient_id}}
+  headers:
+    - name: Authorization
+      value: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkbWluQGV4YW1wbGUuY29tIiwiZXhwIjoxNzgwNzU5MDUzLCJyb2xlIjoiQURNSU4iLCJ1aWQiOiJhNWNkYTdiZi02ZDNkLTRmMTMtOWUzMC04NGRjZmMwYzlmM2YifQ.pV11KHFuncogdj3KOE9sW_gmzMyFMo4DwhJ6JXYvkIM
   auth: inherit
 
 runtime:
   variables:
     - name: patient_id
-      value: 44c55caa-ff9e-4c5f-bf84-f0aa0d2ef533
+      value: 6a12235b-544e-43f0-b625-e45a9c86864a
 
 settings:
   encodeUrl: true

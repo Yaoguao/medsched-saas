@@ -29,20 +29,48 @@ func (s *Service) CreatePredictionResult(ctx context.Context, prediction models.
 	if prediction.RiskLevel == "" {
 		prediction.RiskLevel = riskLevel(prediction.Probability)
 	}
-	if err := s.store.CreatePredictionResult(ctx, &prediction); err != nil {
+	if err := s.store.UpsertPredictionResult(ctx, &prediction); err != nil {
 		return models.PredictionResult{}, err
 	}
-	return prediction, nil
+	return s.store.GetPredictionResultByAppointment(ctx, prediction.AppointmentID)
 }
 
 func (s *Service) GetPredictionResult(ctx context.Context, id uuid.UUID) (models.PredictionResult, error) {
 	return s.store.GetPredictionResult(ctx, id)
 }
 
+func (s *Service) MLModelInfo(ctx context.Context) (MLModelInfo, error) {
+	if s.mlClient == nil {
+		return MLModelInfo{}, fmt.Errorf("%w: ml client is not configured", repository.ErrValidation)
+	}
+	info, err := s.mlClient.ModelInfo(ctx)
+	if err != nil {
+		return MLModelInfo{}, err
+	}
+	return MLModelInfo{
+		Loaded:       info.Loaded,
+		ModelVersion: info.ModelVersion,
+		Algorithm:    info.Algorithm,
+		ArtifactPath: info.ArtifactPath,
+		Metrics:      info.Metrics,
+	}, nil
+}
+
 func (s *Service) PredictAppointmentNoShow(ctx context.Context, appointmentID uuid.UUID) (models.PredictionResult, error) {
 	if s.mlClient == nil {
 		return models.PredictionResult{}, fmt.Errorf("%w: ml client is not configured", repository.ErrValidation)
 	}
+	return s.predictAppointmentNoShow(ctx, appointmentID)
+}
+
+func (s *Service) tryPredictAppointmentNoShow(ctx context.Context, appointmentID uuid.UUID) {
+	if s.mlClient == nil || appointmentID == uuid.Nil {
+		return
+	}
+	_, _ = s.predictAppointmentNoShow(ctx, appointmentID)
+}
+
+func (s *Service) predictAppointmentNoShow(ctx context.Context, appointmentID uuid.UUID) (models.PredictionResult, error) {
 	if appointmentID == uuid.Nil {
 		return models.PredictionResult{}, fmt.Errorf("%w: appointment_id is required", repository.ErrValidation)
 	}
@@ -51,14 +79,26 @@ func (s *Service) PredictAppointmentNoShow(ctx context.Context, appointmentID uu
 	if err != nil {
 		return models.PredictionResult{}, err
 	}
-
-	requestedAt := s.now()
-	response, err := s.mlClient.PredictNoShow(ctx, noShowPredictionRequest(appointment))
+	previousAppointments, previousNoShows, err := s.store.PatientAttendanceHistory(
+		ctx,
+		appointment.PatientID,
+		appointment.AppointmentAt,
+		appointment.ID,
+	)
 	if err != nil {
 		return models.PredictionResult{}, err
 	}
 
-	return s.CreatePredictionResult(ctx, models.PredictionResult{
+	requestedAt := s.now()
+	response, err := s.mlClient.PredictNoShow(
+		ctx,
+		noShowPredictionRequest(appointment, previousAppointments, previousNoShows),
+	)
+	if err != nil {
+		return models.PredictionResult{}, err
+	}
+
+	prediction, err := s.CreatePredictionResult(ctx, models.PredictionResult{
 		AppointmentID: appointmentID,
 		Probability:   response.NoShowProbability,
 		RiskLevel:     predictionRiskLevel(response.RiskLevel, response.NoShowProbability),
@@ -66,6 +106,13 @@ func (s *Service) PredictAppointmentNoShow(ctx context.Context, appointmentID uu
 		RequestedAt:   requestedAt,
 		ReceivedAt:    s.now(),
 	})
+	if err != nil {
+		return models.PredictionResult{}, err
+	}
+	if prediction.RiskLevel == models.PredictionRiskHigh {
+		s.scheduleHighRiskNotifications(ctx, appointment)
+	}
+	return prediction, nil
 }
 
 func (s *Service) ExportNoShowTrainingDataset(ctx context.Context, limit int) ([]NoShowTrainingRow, error) {
@@ -96,8 +143,13 @@ func (s *Service) ExportNoShowTrainingDataset(ctx context.Context, limit int) ([
 	return rows, nil
 }
 
-func noShowPredictionRequest(appointment models.Appointment) ml.NoShowPredictionRequest {
+func noShowPredictionRequest(
+	appointment models.Appointment,
+	previousAppointments int,
+	previousNoShows int,
+) ml.NoShowPredictionRequest {
 	profile := appointment.Patient.MedicalProfile
+	notifications := notificationStatsFromAppointment(appointment)
 	patientFeatures := ml.PatientFeatures{
 		Age:           appointment.Patient.Age,
 		Gender:        valueOrUnknown(appointment.Patient.Gender),
@@ -114,25 +166,39 @@ func noShowPredictionRequest(appointment models.Appointment) ml.NoShowPrediction
 	return ml.NoShowPredictionRequest{
 		Patient: patientFeatures,
 		Appointment: ml.AppointmentFeatures{
-			ScheduledAt:     appointment.ScheduledAt,
-			AppointmentAt:   appointment.AppointmentAt,
-			BookingChannel:  string(appointment.BookingChannel),
-			VisitType:       string(appointment.VisitType),
-			DoctorSpecialty: valueOrUnknown(appointment.Doctor.Specialty),
-			SMSReceived:     appointment.ReminderSent,
+			ScheduledAt:          appointment.ScheduledAt,
+			AppointmentAt:        appointment.AppointmentAt,
+			BookingChannel:       string(appointment.BookingChannel),
+			VisitType:            string(appointment.VisitType),
+			DoctorSpecialty:      valueOrUnknown(appointment.Doctor.Specialty),
+			SMSReceived:          appointment.ReminderSent,
+			NotificationCount:    notifications.total,
+			SentNotifications:    notifications.sent,
+			FailedNotifications:  notifications.failed,
+			PendingNotifications: notifications.pending,
 		},
-		History: ml.HistoryFeatures{},
+		History: ml.HistoryFeatures{
+			PreviousAppointmentsCount: previousAppointments,
+			PreviousNoShowCount:       previousNoShows,
+		},
 	}
 }
 
 func noShowTrainingRow(appointment models.Appointment, history patientHistory) NoShowTrainingRow {
 	profile := appointment.Patient.MedicalProfile
+	notifications := notificationStatsFromAppointment(appointment)
 	row := NoShowTrainingRow{
+		PatientID:                 appointment.PatientID,
+		AppointmentAt:             appointment.AppointmentAt,
 		Age:                       appointment.Patient.Age,
 		Gender:                    valueOrUnknown(appointment.Patient.Gender),
 		Neighbourhood:             valueOrUnknown(appointment.Patient.Neighbourhood),
 		Scholarship:               appointment.Patient.Scholarship,
 		SMSReceived:               appointment.ReminderSent,
+		NotificationCount:         notifications.total,
+		SentNotifications:         notifications.sent,
+		FailedNotifications:       notifications.failed,
+		PendingNotifications:      notifications.pending,
 		LeadTimeDays:              leadTimeDays(appointment),
 		AppointmentWeekday:        int(appointment.AppointmentAt.Weekday()),
 		AppointmentHour:           appointment.AppointmentAt.Hour(),
@@ -151,6 +217,28 @@ func noShowTrainingRow(appointment models.Appointment, history patientHistory) N
 		row.HasHandicap = profile.HasHandicap
 	}
 	return row
+}
+
+type notificationStats struct {
+	total   int
+	sent    int
+	failed  int
+	pending int
+}
+
+func notificationStatsFromAppointment(appointment models.Appointment) notificationStats {
+	stats := notificationStats{total: len(appointment.Notifications)}
+	for _, notification := range appointment.Notifications {
+		switch notification.Status {
+		case models.NotificationStatusSent, models.NotificationStatusDelivered:
+			stats.sent++
+		case models.NotificationStatusFailed:
+			stats.failed++
+		case models.NotificationStatusPending:
+			stats.pending++
+		}
+	}
+	return stats
 }
 
 func leadTimeDays(appointment models.Appointment) int {

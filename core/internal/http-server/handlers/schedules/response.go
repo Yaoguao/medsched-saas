@@ -23,15 +23,16 @@ type scheduleResponse struct {
 }
 
 type timeSlotResponse struct {
-	ID         uuid.UUID         `json:"id"`
-	ScheduleID uuid.UUID         `json:"schedule_id"`
-	DoctorID   uuid.UUID         `json:"doctor_id"`
-	StartAt    time.Time         `json:"start_at"`
-	EndAt      time.Time         `json:"end_at"`
-	Status     models.SlotStatus `json:"status"`
-	IsBlocked  bool              `json:"is_blocked"`
-	CreatedAt  time.Time         `json:"created_at"`
-	UpdatedAt  time.Time         `json:"updated_at"`
+	ID          uuid.UUID         `json:"id"`
+	ScheduleID  uuid.UUID         `json:"schedule_id"`
+	DoctorID    uuid.UUID         `json:"doctor_id"`
+	StartAt     time.Time         `json:"start_at"`
+	EndAt       time.Time         `json:"end_at"`
+	Status      models.SlotStatus `json:"status"`
+	IsBlocked   bool              `json:"is_blocked"`
+	BlockReason string            `json:"block_reason"`
+	CreatedAt   time.Time         `json:"created_at"`
+	UpdatedAt   time.Time         `json:"updated_at"`
 }
 
 func scheduleResponsesFromModels(schedules []models.Schedule) []scheduleResponse {
@@ -71,14 +72,15 @@ func timeSlotResponsesFromModels(slots []models.TimeSlot) []timeSlotResponse {
 
 func timeSlotResponseFromModel(slot models.TimeSlot) timeSlotResponse {
 	return timeSlotResponse{
-		ID:         slot.ID,
-		ScheduleID: slot.ScheduleID,
-		DoctorID:   slot.DoctorID,
-		StartAt:    slot.StartAt,
-		EndAt:      slot.EndAt,
-		Status:     slot.Status,
-		IsBlocked:  slot.IsBlocked,
-		CreatedAt:  slot.CreatedAt,
-		UpdatedAt:  slot.UpdatedAt,
+		ID:          slot.ID,
+		ScheduleID:  slot.ScheduleID,
+		DoctorID:    slot.DoctorID,
+		StartAt:     slot.StartAt,
+		EndAt:       slot.EndAt,
+		Status:      slot.Status,
+		IsBlocked:   slot.IsBlocked,
+		BlockReason: slot.BlockReason,
+		CreatedAt:   slot.CreatedAt,
+		UpdatedAt:   slot.UpdatedAt,
 	}
 }

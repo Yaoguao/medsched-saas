@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -25,6 +25,10 @@ class AppointmentFeatures(BaseModel):
     visit_type: str = "UNKNOWN"
     doctor_specialty: str = "UNKNOWN"
     sms_received: bool = False
+    notification_count: int = Field(default=0, ge=0)
+    sent_notifications: int = Field(default=0, ge=0)
+    failed_notifications: int = Field(default=0, ge=0)
+    pending_notifications: int = Field(default=0, ge=0)
 
 
 class HistoryFeatures(BaseModel):
@@ -44,3 +48,15 @@ class PredictionResponse(BaseModel):
     model_version: str
     algorithm: str
     top_factors: list[str]
+
+
+class ModelInfoResponse(BaseModel):
+    loaded: bool
+    model_version: str
+    algorithm: str
+    artifact_path: str
+    metrics: dict[str, Any] = Field(default_factory=dict)
+
+
+class ModelActivationRequest(BaseModel):
+    model_version: str = Field(min_length=1, max_length=128)

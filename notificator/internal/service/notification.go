@@ -1,11 +1,13 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
+	"net/http"
 	"strings"
 	"time"
 
@@ -19,6 +21,7 @@ import (
 type StorageRedis interface {
 	Get(ctx context.Context, key string) (string, error)
 	SetWithTTL(ctx context.Context, key string, val models.Notification, ttl time.Duration) error
+	SetDeadLetter(ctx context.Context, key string, val models.DeadLetter, ttl time.Duration) error
 	SetTemplate(ctx context.Context, key string, val models.NotificationTemplate) error
 	UpdateNotification(ctx context.Context, key string, notification models.Notification) error
 	UpdateStatus(ctx context.Context, key, status string) error
@@ -287,9 +290,12 @@ func (s *NotifierService) SendNow(ctx context.Context, id uuid.UUID) error {
 			n.Attempts++
 			n.LastError = err.Error()
 			n.UpdatedAt = time.Now()
+			n.AttemptHistory = appendDeliveryAttempt(n.AttemptHistory, n.UpdatedAt, "failed", err.Error())
 			if n.Attempts > maxRetries {
 				n.Status = "failed"
 				_ = s.redis.UpdateNotification(ctx, notificationKey(id), n)
+				s.storeDeadLetter(context.Background(), n, err.Error())
+				s.notifyCoreDeliveryStatus(context.Background(), n)
 				return err
 			}
 
@@ -310,9 +316,101 @@ func (s *NotifierService) SendNow(ctx context.Context, id uuid.UUID) error {
 		n.Status = "sent"
 		n.LastError = ""
 		n.UpdatedAt = time.Now()
+		n.AttemptHistory = appendDeliveryAttempt(n.AttemptHistory, n.UpdatedAt, "sent", "")
 		_ = s.redis.UpdateNotification(ctx, notificationKey(id), n)
+		s.notifyCoreDeliveryStatus(context.Background(), n)
+
+		n.Status = "delivered"
+		n.UpdatedAt = time.Now()
+		_ = s.redis.UpdateNotification(ctx, notificationKey(id), n)
+		s.notifyCoreDeliveryStatus(context.Background(), n)
 		return nil
 	}
+}
+
+func appendDeliveryAttempt(history []models.DeliveryAttempt, attemptedAt time.Time, status string, err string) []models.DeliveryAttempt {
+	if attemptedAt.IsZero() {
+		attemptedAt = time.Now()
+	}
+	return append(history, models.DeliveryAttempt{
+		AttemptedAt: attemptedAt,
+		Status:      status,
+		Error:       err,
+	})
+}
+
+func (s *NotifierService) storeDeadLetter(ctx context.Context, n models.Notification, reason string) {
+	deadLetter := models.DeadLetter{
+		ID:             n.ID,
+		NotificationID: n.ID,
+		ExternalID:     n.ExternalID,
+		Channel:        n.Channel,
+		Recipient:      n.Recipient,
+		Reason:         reason,
+		Attempts:       n.Attempts,
+		AttemptHistory: n.AttemptHistory,
+		Notification:   n,
+		CreatedAt:      time.Now(),
+	}
+	if err := s.redis.SetDeadLetter(ctx, deadLetterKey(n.ID), deadLetter, 7*24*time.Hour); err != nil {
+		s.log.WithError(err).WithField("id", n.ID.String()).Error("failed to store dead letter")
+	}
+}
+
+func (s *NotifierService) notifyCoreDeliveryStatus(ctx context.Context, n models.Notification) {
+	baseURL := strings.TrimRight(strings.TrimSpace(s.cfg.Notifier.CoreCallbackURL), "/")
+	if baseURL == "" || n.ID == uuid.Nil {
+		return
+	}
+
+	status := strings.ToUpper(strings.TrimSpace(n.Status))
+	payload := deliveryStatusCallback{
+		Status:       status,
+		ErrorMessage: n.LastError,
+	}
+	if status == "SENT" || status == "DELIVERED" {
+		now := n.UpdatedAt
+		if now.IsZero() {
+			now = time.Now()
+		}
+		payload.SentAt = &now
+	}
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		s.log.WithError(err).WithField("id", n.ID.String()).Error("failed to marshal delivery callback")
+		return
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, baseURL+"/notifications/"+n.ID.String()+"/delivery-status", bytes.NewReader(body))
+	if err != nil {
+		s.log.WithError(err).WithField("id", n.ID.String()).Error("failed to build delivery callback")
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if secret := strings.TrimSpace(s.cfg.Notifier.CoreCallbackSecret); secret != "" {
+		req.Header.Set("X-Notifier-Secret", secret)
+	}
+
+	client := &http.Client{Timeout: 3 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		s.log.WithError(err).WithField("id", n.ID.String()).Error("delivery callback failed")
+		return
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		s.log.WithFields(logrus.Fields{
+			"id":     n.ID.String(),
+			"status": resp.StatusCode,
+		}).Error("delivery callback returned non-success status")
+	}
+}
+
+type deliveryStatusCallback struct {
+	Status       string     `json:"status"`
+	SentAt       *time.Time `json:"sent_at,omitempty"`
+	ErrorMessage string     `json:"error_message,omitempty"`
 }
 
 func (s *NotifierService) ListNotifications(ctx context.Context) ([]models.Notification, error) {
@@ -333,6 +431,38 @@ func (s *NotifierService) ListNotifications(ctx context.Context) ([]models.Notif
 		notifications = append(notifications, n)
 	}
 	return notifications, nil
+}
+
+func (s *NotifierService) ListDeadLetters(ctx context.Context) ([]models.DeadLetter, error) {
+	keys, err := s.redis.Keys(ctx, "deadletter:*")
+	if err != nil {
+		return nil, err
+	}
+	deadLetters := make([]models.DeadLetter, 0, len(keys))
+	for _, key := range keys {
+		data, err := s.redis.Get(ctx, key)
+		if err != nil {
+			return nil, err
+		}
+		var deadLetter models.DeadLetter
+		if err := json.Unmarshal([]byte(data), &deadLetter); err != nil {
+			return nil, err
+		}
+		deadLetters = append(deadLetters, deadLetter)
+	}
+	return deadLetters, nil
+}
+
+func (s *NotifierService) GetDeadLetter(ctx context.Context, id uuid.UUID) (models.DeadLetter, error) {
+	var deadLetter models.DeadLetter
+	data, err := s.redis.Get(ctx, deadLetterKey(id))
+	if err != nil {
+		return deadLetter, err
+	}
+	if err := json.Unmarshal([]byte(data), &deadLetter); err != nil {
+		return deadLetter, err
+	}
+	return deadLetter, nil
 }
 
 func (s *NotifierService) HandleCommand(ctx context.Context, body []byte) error {
@@ -427,6 +557,10 @@ func renderTemplate(template string, variables map[string]string) string {
 
 func notificationKey(id uuid.UUID) string {
 	return fmt.Sprintf("notif:%s", id.String())
+}
+
+func deadLetterKey(id uuid.UUID) string {
+	return fmt.Sprintf("deadletter:%s", id.String())
 }
 
 func templateKey(id string) string {

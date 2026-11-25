@@ -2,7 +2,9 @@ package sender
 
 import (
 	"context"
+	"errors"
 	"notificator/internal/models"
+	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -23,6 +25,9 @@ func NewEmailSender(log *logrus.Logger) *EmailSender {
 
 func (s *EmailSender) Send(ctx context.Context, n models.Notification) error {
 	time.Sleep(100 * time.Millisecond)
+	if shouldFail(n.Recipient) {
+		return errors.New("email sender forced failure")
+	}
 
 	s.log.WithFields(logrus.Fields{
 		"channel":   "email",
@@ -44,6 +49,9 @@ func NewTelegramSender(log *logrus.Logger) *TelegramSender {
 
 func (s *TelegramSender) Send(ctx context.Context, n models.Notification) error {
 	time.Sleep(100 * time.Millisecond)
+	if shouldFail(n.Recipient) {
+		return errors.New("telegram sender forced failure")
+	}
 
 	s.log.WithFields(logrus.Fields{
 		"channel":   "telegram",
@@ -64,6 +72,9 @@ func NewSMSSender(log *logrus.Logger) *SMSSender {
 
 func (s *SMSSender) Send(ctx context.Context, n models.Notification) error {
 	time.Sleep(100 * time.Millisecond)
+	if shouldFail(n.Recipient) {
+		return errors.New("sms sender forced failure")
+	}
 
 	s.log.WithFields(logrus.Fields{
 		"channel":   "sms",
@@ -72,4 +83,9 @@ func (s *SMSSender) Send(ctx context.Context, n models.Notification) error {
 	}).Info("sending sms (stub)")
 
 	return nil
+}
+
+func shouldFail(recipient string) bool {
+	recipient = strings.ToLower(strings.TrimSpace(recipient))
+	return strings.Contains(recipient, "fail")
 }

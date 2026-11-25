@@ -1,1 +1,26 @@
 name: JWT_TOKEN
+variables:
+  - name: access_token
+    value: ""
+  - name: admin_token
+    value: ""
+  - name: doctor_token
+    value: ""
+  - name: patient_token
+    value: ""
+  - name: user_id
+    value: ""
+  - name: patient_id
+    value: ""
+  - name: doctor_id
+    value: ""
+  - name: schedule_id
+    value: ""
+  - name: slot_id
+    value: ""
+  - name: appointment_id
+    value: ""
+  - name: notification_id
+    value: ""
+  - name: prediction_id
+    value: ""

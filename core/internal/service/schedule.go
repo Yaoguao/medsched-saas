@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"base/internal/domain/models"
 	"base/internal/lib/pagination"
@@ -73,6 +74,9 @@ func (s *Service) CreateTimeSlot(ctx context.Context, slot models.TimeSlot) (mod
 	if !slot.EndAt.After(slot.StartAt) {
 		return models.TimeSlot{}, fmt.Errorf("%w: end_at must be after start_at", repository.ErrValidation)
 	}
+	if slot.StartAt.Before(s.now()) {
+		return models.TimeSlot{}, fmt.Errorf("%w: cannot create past time slot", repository.ErrValidation)
+	}
 
 	schedule, err := s.store.GetSchedule(ctx, slot.ScheduleID)
 	if err != nil {
@@ -105,6 +109,14 @@ func (s *Service) UpdateTimeSlot(ctx context.Context, id uuid.UUID, patch TimeSl
 	if err != nil {
 		return models.TimeSlot{}, err
 	}
+	activeAppointment, err := s.store.HasActiveAppointmentForTimeSlot(ctx, id)
+	if err != nil {
+		return models.TimeSlot{}, err
+	}
+	if activeAppointment {
+		return models.TimeSlot{}, fmt.Errorf("%w: cannot edit time slot with active appointment", repository.ErrConflict)
+	}
+
 	if patch.StartAt != nil {
 		slot.StartAt = *patch.StartAt
 	}
@@ -123,6 +135,9 @@ func (s *Service) UpdateTimeSlot(ctx context.Context, id uuid.UUID, patch TimeSl
 	if !slot.EndAt.After(slot.StartAt) {
 		return models.TimeSlot{}, fmt.Errorf("%w: end_at must be after start_at", repository.ErrValidation)
 	}
+	if slot.StartAt.Before(s.now()) {
+		return models.TimeSlot{}, fmt.Errorf("%w: cannot move time slot to the past", repository.ErrValidation)
+	}
 
 	overlap, err := s.store.HasDoctorSlotOverlap(ctx, slot.DoctorID, slot.StartAt, slot.EndAt, &id)
 	if err != nil {
@@ -138,13 +153,28 @@ func (s *Service) UpdateTimeSlot(ctx context.Context, id uuid.UUID, patch TimeSl
 	return slot, nil
 }
 
-func (s *Service) BlockTimeSlot(ctx context.Context, id uuid.UUID, blocked bool) (models.TimeSlot, error) {
+func (s *Service) BlockTimeSlot(ctx context.Context, id uuid.UUID, blocked bool, reason string) (models.TimeSlot, error) {
+	if blocked && strings.TrimSpace(reason) == "" {
+		return models.TimeSlot{}, fmt.Errorf("%w: block reason is required", repository.ErrValidation)
+	}
 	status := models.SlotStatusFree
 	if blocked {
 		status = models.SlotStatusBlocked
 	}
-	return s.UpdateTimeSlot(ctx, id, TimeSlotPatch{
+	slot, err := s.UpdateTimeSlot(ctx, id, TimeSlotPatch{
 		Status:    &status,
 		IsBlocked: &blocked,
 	})
+	if err != nil {
+		return models.TimeSlot{}, err
+	}
+	if blocked {
+		slot.BlockReason = strings.TrimSpace(reason)
+	} else {
+		slot.BlockReason = ""
+	}
+	if err := s.store.UpdateTimeSlot(ctx, &slot); err != nil {
+		return models.TimeSlot{}, err
+	}
+	return slot, nil
 }

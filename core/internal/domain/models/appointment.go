@@ -22,12 +22,13 @@ type Appointment struct {
 	CancelledAt    *time.Time
 	CompletedAt    *time.Time
 
-	Patient          Patient                    `gorm:"foreignKey:PatientID"`
-	Doctor           Doctor                     `gorm:"foreignKey:DoctorID"`
-	TimeSlot         TimeSlot                   `gorm:"foreignKey:TimeSlotID"`
-	StatusHistory    []AppointmentStatusHistory `gorm:"foreignKey:AppointmentID"`
-	Notifications    []Notification             `gorm:"foreignKey:AppointmentID"`
-	PredictionResult *PredictionResult          `gorm:"foreignKey:AppointmentID"`
+	Patient             Patient                         `gorm:"foreignKey:PatientID"`
+	Doctor              Doctor                          `gorm:"foreignKey:DoctorID"`
+	TimeSlot            TimeSlot                        `gorm:"foreignKey:TimeSlotID"`
+	StatusHistory       []AppointmentStatusHistory      `gorm:"foreignKey:AppointmentID"`
+	RescheduleProposals []AppointmentRescheduleProposal `gorm:"foreignKey:AppointmentID"`
+	Notifications       []Notification                  `gorm:"foreignKey:AppointmentID"`
+	PredictionResult    *PredictionResult               `gorm:"foreignKey:AppointmentID"`
 
 	BaseModel
 }

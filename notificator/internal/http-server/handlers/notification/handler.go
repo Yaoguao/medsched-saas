@@ -28,6 +28,8 @@ func (h *Handler) Register(r chi.Router) {
 	r.Get("/notify/{id}", h.Get)
 	r.Post("/notify/{id}/send", h.SendNow)
 	r.Delete("/notify/{id}", h.Cancel)
+	r.Get("/dead-letters", h.ListDeadLetters)
+	r.Get("/dead-letters/{id}", h.GetDeadLetter)
 
 	r.Post("/templates", h.UpsertTemplate)
 	r.Get("/templates", h.ListTemplates)
@@ -118,6 +120,30 @@ func (h *Handler) Cancel(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) ListDeadLetters(w http.ResponseWriter, r *http.Request) {
+	deadLetters, err := h.svc.ListDeadLetters(r.Context())
+	if err != nil {
+		http.Error(w, "list dead letters failed", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, deadLetters)
+}
+
+func (h *Handler) GetDeadLetter(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+
+	deadLetter, err := h.svc.GetDeadLetter(r.Context(), id)
+	if err != nil {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+	writeJSON(w, http.StatusOK, deadLetter)
 }
 
 func (h *Handler) UpsertTemplate(w http.ResponseWriter, r *http.Request) {

@@ -17,3 +17,39 @@ auth:
 ml:
   base_url: "http://localhost:8000"
   timeout: 3s
+  dataset_service_token: "dev-ml-dataset-token"
+  admin_token: "dev-ml-admin-token"
+notifier:
+  base_url: "http://localhost:8082"
+  timeout: 3s
+  enabled: true
+  callback_secret: "dev-notifier-callback-secret"
+fhir:
+  enabled: false
+  code: "clinic-fhir"
+  name: "Clinic FHIR R4"
+  base_url: ""
+  timeout: 5s
+jobs:
+  auto_no_show:
+    enabled: true
+    interval: 1m
+    grace: 30m
+    limit: 100
+  ml_training:
+    enabled: true
+    interval: 10s
+    timeout: 30m
+    python_path: "../ml-service/.venv/bin/python"
+    work_dir: "../ml-service"
+    core_url: "http://localhost:8081"
+    data_path: "../healthcare_noshows.csv"
+    models_dir: "artifacts/models"
+    metrics_path: "artifacts/metrics.json"
+    max_output_size: 1048576
+bootstrap:
+  admin:
+    enabled: true
+    email: "admin@example.com"
+    phone: "+79990000000"
+    password: "admin12345"

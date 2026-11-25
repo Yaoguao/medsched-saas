@@ -42,6 +42,15 @@ func (s *Store) GetDoctorSchedules(ctx context.Context, doctorID uuid.UUID, page
 	return schedules, err
 }
 
+func (s *Store) FindDoctorScheduleForDate(ctx context.Context, doctorID uuid.UUID, date time.Time) (models.Schedule, error) {
+	var schedule models.Schedule
+	err := s.db.WithContext(ctx).
+		Where("doctor_id = ? AND status = ? AND start_date <= ? AND end_date >= ?", doctorID, "ACTIVE", date, date).
+		Order("start_date desc").
+		First(&schedule).Error
+	return schedule, mapGormError(err)
+}
+
 func (s *Store) UpdateSchedule(ctx context.Context, schedule *models.Schedule) error {
 	return mapGormError(s.db.WithContext(ctx).Save(schedule).Error)
 }
@@ -80,4 +89,25 @@ func (s *Store) HasDoctorSlotOverlap(ctx context.Context, doctorID uuid.UUID, st
 		return false, err
 	}
 	return count > 0, nil
+}
+
+func (s *Store) ListDoctorTimeSlotsBetween(ctx context.Context, doctorID uuid.UUID, startAt, endAt time.Time) ([]models.TimeSlot, error) {
+	var slots []models.TimeSlot
+	err := s.db.WithContext(ctx).
+		Where("doctor_id = ? AND start_at < ? AND end_at > ?", doctorID, endAt, startAt).
+		Order("start_at asc").
+		Find(&slots).Error
+	return slots, err
+}
+
+func (s *Store) HasActiveAppointmentForTimeSlot(ctx context.Context, slotID uuid.UUID) (bool, error) {
+	var count int64
+	err := s.db.WithContext(ctx).
+		Model(&models.Appointment{}).
+		Where("time_slot_id = ? AND status IN ?", slotID, []models.AppointmentStatus{
+			models.AppointmentStatusCreated,
+			models.AppointmentStatusConfirmed,
+		}).
+		Count(&count).Error
+	return count > 0, err
 }

@@ -18,6 +18,10 @@ FEATURE_COLUMNS = [
     "has_alcoholism",
     "has_handicap",
     "sms_received",
+    "notification_count",
+    "sent_notifications",
+    "failed_notifications",
+    "pending_notifications",
     "lead_time_days",
     "appointment_weekday",
     "appointment_hour",
@@ -31,6 +35,10 @@ FEATURE_COLUMNS = [
 
 NUMERIC_FEATURES = [
     "age",
+    "notification_count",
+    "sent_notifications",
+    "failed_notifications",
+    "pending_notifications",
     "lead_time_days",
     "appointment_weekday",
     "appointment_hour",
@@ -77,6 +85,10 @@ def request_to_features(req: PredictionRequest) -> pd.DataFrame:
         "has_alcoholism": req.patient.has_alcoholism,
         "has_handicap": req.patient.has_handicap,
         "sms_received": req.appointment.sms_received,
+        "notification_count": req.appointment.notification_count,
+        "sent_notifications": req.appointment.sent_notifications,
+        "failed_notifications": req.appointment.failed_notifications,
+        "pending_notifications": req.appointment.pending_notifications,
         "lead_time_days": lead_time_days,
         "appointment_weekday": appointment_at.weekday(),
         "appointment_hour": appointment_at.hour,
@@ -90,7 +102,9 @@ def request_to_features(req: PredictionRequest) -> pd.DataFrame:
     return pd.DataFrame([row], columns=FEATURE_COLUMNS)
 
 
-def dataset_to_training_frame(csv_path: str) -> tuple[pd.DataFrame, pd.Series]:
+def dataset_to_training_frame(
+    csv_path: str,
+) -> tuple[pd.DataFrame, pd.Series, pd.DataFrame]:
     df = pd.read_csv(csv_path)
     scheduled = pd.to_datetime(df["ScheduledDay"], errors="coerce")
     appointment = pd.to_datetime(df["AppointmentDay"], errors="coerce")
@@ -107,6 +121,10 @@ def dataset_to_training_frame(csv_path: str) -> tuple[pd.DataFrame, pd.Series]:
             "has_alcoholism": to_bool(df["Alcoholism"]),
             "has_handicap": to_bool(df["Handcap"]),
             "sms_received": to_bool(df["SMS_received"]),
+            "notification_count": to_bool(df["SMS_received"]).astype(int),
+            "sent_notifications": to_bool(df["SMS_received"]).astype(int),
+            "failed_notifications": 0,
+            "pending_notifications": 0,
             "lead_time_days": lead_time,
             "appointment_weekday": appointment.dt.weekday.fillna(0),
             "appointment_hour": appointment.dt.hour.fillna(0),
@@ -122,10 +140,13 @@ def dataset_to_training_frame(csv_path: str) -> tuple[pd.DataFrame, pd.Series]:
 
     showed_up = to_bool(df["Showed_up"])
     target = (~showed_up).astype(int)
-    return training, target
+    metadata = training_metadata(df["PatientId"], appointment)
+    return training, target, metadata
 
 
-def core_records_to_training_frame(records: list[dict[str, Any]]) -> tuple[pd.DataFrame, pd.Series]:
+def core_records_to_training_frame(
+    records: list[dict[str, Any]],
+) -> tuple[pd.DataFrame, pd.Series, pd.DataFrame]:
     df = pd.DataFrame(records)
     if df.empty:
         raise ValueError("core training dataset is empty")
@@ -141,6 +162,10 @@ def core_records_to_training_frame(records: list[dict[str, Any]]) -> tuple[pd.Da
             "has_alcoholism": to_bool(df["has_alcoholism"]),
             "has_handicap": to_bool(df["has_handicap"]),
             "sms_received": to_bool(df["sms_received"]),
+            "notification_count": numeric_column(df, "notification_count"),
+            "sent_notifications": numeric_column(df, "sent_notifications"),
+            "failed_notifications": numeric_column(df, "failed_notifications"),
+            "pending_notifications": numeric_column(df, "pending_notifications"),
             "lead_time_days": df["lead_time_days"].clip(lower=0),
             "appointment_weekday": df["appointment_weekday"].fillna(0),
             "appointment_hour": df["appointment_hour"].fillna(0),
@@ -154,11 +179,36 @@ def core_records_to_training_frame(records: list[dict[str, Any]]) -> tuple[pd.Da
         columns=FEATURE_COLUMNS,
     )
     target = to_bool(df["no_show"]).astype(int)
-    return training, target
+    metadata = training_metadata(df["patient_id"], df["appointment_at"])
+    return training, target, metadata
+
+
+def training_metadata(patient_ids: pd.Series, appointment_times: pd.Series) -> pd.DataFrame:
+    metadata = pd.DataFrame(
+        {
+            "patient_id": patient_ids.map(str),
+            "appointment_at": pd.to_datetime(
+                appointment_times,
+                errors="coerce",
+                utc=True,
+            ),
+        }
+    )
+    if metadata["patient_id"].str.strip().eq("").any():
+        raise ValueError("training dataset contains empty patient_id")
+    if metadata["appointment_at"].isna().any():
+        raise ValueError("training dataset contains invalid appointment_at")
+    return metadata
 
 
 def to_bool(series: pd.Series) -> pd.Series:
     return series.map(_bool_value).astype(bool)
+
+
+def numeric_column(df: pd.DataFrame, name: str) -> pd.Series:
+    if name not in df:
+        return pd.Series(0, index=df.index)
+    return pd.to_numeric(df[name], errors="coerce").fillna(0).clip(lower=0)
 
 
 def normalize_text(value: Any) -> str:
@@ -168,10 +218,14 @@ def normalize_text(value: Any) -> str:
     return text.upper() if text else "UNKNOWN"
 
 
-def risk_level(probability: float) -> str:
-    if probability >= 0.65:
+def risk_level(
+    probability: float,
+    thresholds: dict[str, float] | None = None,
+) -> str:
+    thresholds = thresholds or {"medium": 0.35, "high": 0.65}
+    if probability >= thresholds["high"]:
         return "HIGH"
-    if probability >= 0.35:
+    if probability >= thresholds["medium"]:
         return "MEDIUM"
     return "LOW"
 

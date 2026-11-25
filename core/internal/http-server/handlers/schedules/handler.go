@@ -6,6 +6,7 @@ import (
 
 	"base/internal/domain/models"
 	"base/internal/http-server/handlers/common"
+	authmiddleware "base/internal/http-server/middleware/auth"
 	"base/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -21,13 +22,39 @@ func New(svc *service.Service) *Handler {
 }
 
 func (h *Handler) Register(r gin.IRouter) {
+	r.POST("/schedules/import/preview", authmiddleware.RequireRoles(models.UserRoleAdmin, models.UserRoleManager), h.previewImport)
+	r.POST("/schedules/import/apply", authmiddleware.RequireRoles(models.UserRoleAdmin, models.UserRoleManager), h.applyImport)
 	r.GET("/schedules/:doctor_id", h.listDoctorSchedules)
-	r.POST("/schedules", h.createSchedule)
-	r.PATCH("/schedules/:schedule_id", h.updateSchedule)
-	r.POST("/schedules/:schedule_id/slots", h.createTimeSlot)
-	r.PATCH("/slots/:slot_id", h.updateTimeSlot)
-	r.POST("/slots/:slot_id/block", h.blockTimeSlot)
-	r.POST("/slots/:slot_id/unblock", h.unblockTimeSlot)
+	r.POST("/schedules", authmiddleware.RequireRoles(models.UserRoleAdmin, models.UserRoleManager), h.createSchedule)
+	r.PATCH("/schedules/:schedule_id", authmiddleware.RequireRoles(models.UserRoleAdmin, models.UserRoleManager), h.updateSchedule)
+	r.POST("/schedules/:schedule_id/slots", authmiddleware.RequireRoles(models.UserRoleAdmin, models.UserRoleManager), h.createTimeSlot)
+	r.PATCH("/slots/:slot_id", authmiddleware.RequireRoles(models.UserRoleAdmin, models.UserRoleManager), h.updateTimeSlot)
+	r.POST("/slots/:slot_id/block", authmiddleware.RequireRoles(models.UserRoleAdmin, models.UserRoleManager), h.blockTimeSlot)
+	r.POST("/slots/:slot_id/unblock", authmiddleware.RequireRoles(models.UserRoleAdmin, models.UserRoleManager), h.unblockTimeSlot)
+}
+
+func (h *Handler) previewImport(c *gin.Context) {
+	var req service.ScheduleImportRequest
+	if !common.BindJSON(c, &req) {
+		return
+	}
+	result, err := h.svc.PreviewScheduleImport(c.Request.Context(), req)
+	if common.HandleError(c, err) {
+		return
+	}
+	c.JSON(http.StatusOK, result)
+}
+
+func (h *Handler) applyImport(c *gin.Context) {
+	var req service.ScheduleImportRequest
+	if !common.BindJSON(c, &req) {
+		return
+	}
+	result, err := h.svc.ApplyScheduleImport(c.Request.Context(), req)
+	if common.HandleError(c, err) {
+		return
+	}
+	c.JSON(http.StatusCreated, result)
 }
 
 func (h *Handler) createSchedule(c *gin.Context) {
@@ -144,7 +171,13 @@ func (h *Handler) setSlotBlock(c *gin.Context, blocked bool) {
 	if !ok {
 		return
 	}
-	slot, err := h.svc.BlockTimeSlot(c.Request.Context(), id, blocked)
+	var req setSlotBlockRequest
+	if c.Request.Body != nil && c.Request.ContentLength != 0 {
+		if !common.BindJSON(c, &req) {
+			return
+		}
+	}
+	slot, err := h.svc.BlockTimeSlot(c.Request.Context(), id, blocked, req.Reason)
 	if common.HandleError(c, err) {
 		return
 	}
@@ -182,4 +215,8 @@ type updateTimeSlotRequest struct {
 	EndAt     *time.Time         `json:"end_at"`
 	Status    *models.SlotStatus `json:"status"`
 	IsBlocked *bool              `json:"is_blocked"`
+}
+
+type setSlotBlockRequest struct {
+	Reason string `json:"reason"`
 }

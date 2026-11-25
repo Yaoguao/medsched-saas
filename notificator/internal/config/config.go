@@ -33,9 +33,11 @@ type Config struct {
 		ReconnectDelay time.Duration `yaml:"reconnect_delay"`
 	} `yaml:"rabbit_mq"`
 	Notifier struct {
-		RetryInitialDelay time.Duration `yaml:"retry_initial_delay"`
-		MaxRetries        int           `yaml:"max_retries"`
-		Channels          []string      `yaml:"channels"`
+		RetryInitialDelay  time.Duration `yaml:"retry_initial_delay"`
+		MaxRetries         int           `yaml:"max_retries"`
+		Channels           []string      `yaml:"channels"`
+		CoreCallbackURL    string        `yaml:"core_callback_url" env:"NOTIFIER_CORE_CALLBACK_URL" env-default:"http://localhost:8081/api/v1"`
+		CoreCallbackSecret string        `yaml:"core_callback_secret" env:"NOTIFIER_CORE_CALLBACK_SECRET" env-default:"dev-notifier-callback-secret"`
 	} `yaml:"notifier"`
 }
 

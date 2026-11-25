@@ -14,61 +14,69 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func (s *Service) CreateUser(ctx context.Context, req CreateUserRequest) (RegisteredPatientUser, error) {
-	if strings.TrimSpace(req.FullName) == "" {
-		return RegisteredPatientUser{}, fmt.Errorf("%w: full_name is required", repository.ErrValidation)
-	}
+func (s *Service) CreateUser(ctx context.Context, req CreateUserRequest) (models.User, error) {
 	if strings.TrimSpace(req.Email) == "" {
-		return RegisteredPatientUser{}, fmt.Errorf("%w: email is required", repository.ErrValidation)
+		return models.User{}, fmt.Errorf("%w: email is required", repository.ErrValidation)
 	}
 	if len(req.Password) < 8 {
-		return RegisteredPatientUser{}, fmt.Errorf("%w: password must contain at least 8 characters", repository.ErrValidation)
+		return models.User{}, fmt.Errorf("%w: password must contain at least 8 characters", repository.ErrValidation)
 	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		return RegisteredPatientUser{}, err
+		return models.User{}, err
 	}
 
 	user := models.User{
 		ID:           uuid.New(),
 		Role:         models.UserRolePatient,
-		FullName:     req.FullName,
 		Email:        strings.ToLower(strings.TrimSpace(req.Email)),
 		Phone:        req.Phone,
 		PasswordHash: string(hash),
 		Status:       "ACTIVE",
 	}
-
-	var registered RegisteredPatientUser
-	err = s.store.WithTx(ctx, func(tx *repository.Store) error {
-		if err := tx.CreateUser(ctx, &user); err != nil {
-			return err
-		}
-
-		userID := user.ID
-		patient := models.Patient{
-			ID:       uuid.New(),
-			UserID:   &userID,
-			FullName: user.FullName,
-			Gender:   "UNKNOWN",
-			Age:      0,
-			Phone:    user.Phone,
-			Email:    user.Email,
-		}
-		if err := tx.CreatePatient(ctx, &patient); err != nil {
-			return err
-		}
-
-		registered = RegisteredPatientUser{
-			User:    user,
-			Patient: patient,
-		}
-		return nil
-	})
-	if err != nil {
-		return RegisteredPatientUser{}, err
+	if err := s.store.CreateUser(ctx, &user); err != nil {
+		return models.User{}, err
 	}
-	return registered, nil
+	return s.store.GetUser(ctx, user.ID)
+}
+
+func (s *Service) CreateStaffUser(ctx context.Context, req CreateStaffUserRequest) (models.User, error) {
+	if !isStaffRole(req.Role) {
+		return models.User{}, fmt.Errorf("%w: staff role is required", repository.ErrValidation)
+	}
+	email := strings.ToLower(strings.TrimSpace(req.Email))
+	if email == "" {
+		return models.User{}, fmt.Errorf("%w: email is required", repository.ErrValidation)
+	}
+	phone := strings.TrimSpace(req.Phone)
+	if phone == "" {
+		return models.User{}, fmt.Errorf("%w: phone is required", repository.ErrValidation)
+	}
+	if len(req.Password) < 8 {
+		return models.User{}, fmt.Errorf("%w: password must contain at least 8 characters", repository.ErrValidation)
+	}
+	if _, err := s.store.GetUserByEmail(ctx, email); err == nil {
+		return models.User{}, fmt.Errorf("%w: user with email already exists", repository.ErrConflict)
+	} else if !IsNotFound(err) {
+		return models.User{}, err
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return models.User{}, err
+	}
+	user := models.User{
+		ID:           uuid.New(),
+		Role:         req.Role,
+		Email:        email,
+		Phone:        phone,
+		PasswordHash: string(hash),
+		Status:       "ACTIVE",
+	}
+	if err := s.store.CreateUser(ctx, &user); err != nil {
+		return models.User{}, err
+	}
+	return s.store.GetUser(ctx, user.ID)
 }
 
 func (s *Service) ListUsers(ctx context.Context, page pagination.Page) ([]models.User, error) {
@@ -76,6 +84,35 @@ func (s *Service) ListUsers(ctx context.Context, page pagination.Page) ([]models
 }
 
 func (s *Service) GetUser(ctx context.Context, id uuid.UUID) (models.User, error) {
+	return s.store.GetUser(ctx, id)
+}
+
+func (s *Service) UpdateUser(ctx context.Context, id uuid.UUID, patch UserPatch) (models.User, error) {
+	user, err := s.store.GetUser(ctx, id)
+	if err != nil {
+		return models.User{}, err
+	}
+	if patch.Role != nil {
+		user.Role = *patch.Role
+	}
+	if patch.Status != nil {
+		if strings.TrimSpace(*patch.Status) == "" {
+			return models.User{}, fmt.Errorf("%w: status cannot be empty", repository.ErrValidation)
+		}
+		user.Status = strings.TrimSpace(*patch.Status)
+	}
+	if patch.Email != nil {
+		if strings.TrimSpace(*patch.Email) == "" {
+			return models.User{}, fmt.Errorf("%w: email cannot be empty", repository.ErrValidation)
+		}
+		user.Email = strings.ToLower(strings.TrimSpace(*patch.Email))
+	}
+	if patch.Phone != nil {
+		user.Phone = strings.TrimSpace(*patch.Phone)
+	}
+	if err := s.store.UpdateUser(ctx, &user); err != nil {
+		return models.User{}, err
+	}
 	return s.store.GetUser(ctx, id)
 }
 
@@ -129,4 +166,17 @@ func bearerToken(header string) (string, error) {
 		return "", fmt.Errorf("bearer token is empty")
 	}
 	return token, nil
+}
+
+func isStaffRole(role models.UserRole) bool {
+	switch role {
+	case models.UserRoleAdmin,
+		models.UserRoleRegistrator,
+		models.UserRoleDoctor,
+		models.UserRoleManager,
+		models.UserRoleITSupport:
+		return true
+	default:
+		return false
+	}
 }

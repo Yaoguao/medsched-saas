@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"base/internal/domain/models"
@@ -24,8 +25,12 @@ func (s *Service) CreateDoctor(ctx context.Context, doctor models.Doctor) (model
 	return doctor, nil
 }
 
-func (s *Service) ListDoctors(ctx context.Context, page pagination.Page) ([]models.Doctor, error) {
-	return s.store.ListDoctors(ctx, page)
+func (s *Service) ListDoctors(ctx context.Context, page pagination.Page, filter repository.DoctorListFilter) ([]models.Doctor, error) {
+	return s.store.ListDoctors(ctx, page, filter)
+}
+
+func (s *Service) ListDoctorSpecialties(ctx context.Context, activeOnly bool) ([]string, error) {
+	return s.store.ListDoctorSpecialties(ctx, activeOnly)
 }
 
 func (s *Service) GetDoctor(ctx context.Context, id uuid.UUID) (models.Doctor, error) {
@@ -67,6 +72,49 @@ func (s *Service) UpdateDoctor(ctx context.Context, id uuid.UUID, patch DoctorPa
 	}
 
 	if err := s.store.UpdateDoctor(ctx, &doctor); err != nil {
+		return models.Doctor{}, err
+	}
+	return doctor, nil
+}
+
+func (s *Service) LinkDoctorUser(ctx context.Context, doctorID uuid.UUID, userID uuid.UUID) (models.Doctor, error) {
+	var doctor models.Doctor
+	err := s.store.WithTx(ctx, func(tx *repository.Store) error {
+		currentDoctor, err := tx.GetDoctor(ctx, doctorID)
+		if err != nil {
+			return err
+		}
+
+		user, err := tx.GetUser(ctx, userID)
+		if err != nil {
+			return err
+		}
+		if user.Status != "ACTIVE" {
+			return fmt.Errorf("%w: user must be active", repository.ErrValidation)
+		}
+
+		linkedDoctor, err := tx.GetDoctorByUserID(ctx, userID)
+		if err == nil && linkedDoctor.ID != doctorID {
+			return fmt.Errorf("%w: user is already linked to another doctor", repository.ErrConflict)
+		}
+		if err != nil && !errors.Is(err, repository.ErrNotFound) {
+			return err
+		}
+
+		currentDoctor.UserID = &userID
+		user.Role = models.UserRoleDoctor
+
+		if err := tx.UpdateUser(ctx, &user); err != nil {
+			return err
+		}
+		if err := tx.UpdateDoctor(ctx, &currentDoctor); err != nil {
+			return err
+		}
+
+		doctor = currentDoctor
+		return nil
+	})
+	if err != nil {
 		return models.Doctor{}, err
 	}
 	return doctor, nil

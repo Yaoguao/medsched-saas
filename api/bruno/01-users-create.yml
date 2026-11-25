@@ -2,22 +2,24 @@ info:
   name: 01 Users - create
   type: http
   seq: 2
+
 http:
   method: POST
   url: http://localhost:8081/api/v1/users
   headers:
-  - name: Content-Type
-    value: application/json
+    - name: Content-Type
+      value: application/json
   body:
     type: json
     data: |-
       {
         "full_name": "Пациент Тестовый",
-        "email": "patient@example.com",
-        "phone": "+79990000999",
+        "email": "patient1@example.com",
+        "phone": "+79990000799",
         "password": "password123"
       }
   auth: inherit
+
 settings:
   encodeUrl: true
   timeout: 0

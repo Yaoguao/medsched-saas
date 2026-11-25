@@ -17,6 +17,8 @@ type Patient struct {
 	Email         string     `gorm:"type:varchar(255);index"`
 	Neighbourhood string     `gorm:"type:varchar(255)"`
 	Scholarship   bool       `gorm:"not null;default:false"`
+	ExternalEHRID string     `gorm:"type:varchar(128);index"`
+	LastEHRSyncAt *time.Time
 
 	User           *User                  `gorm:"foreignKey:UserID"`
 	MedicalProfile *PatientMedicalProfile `gorm:"foreignKey:PatientID"`

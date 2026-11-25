@@ -11,10 +11,9 @@ import (
 func TestNewToken(t *testing.T) {
 	uid, _ := uuid.NewUUID()
 	user := models.User{
-		ID:       uid,
-		Email:    "test@example.com",
-		Role:     models.UserRoleAdmin,
-		FullName: "Test User",
+		ID:    uid,
+		Email: "test@example.com",
+		Role:  models.UserRoleAdmin,
 	}
 
 	secret := "supersecret"
